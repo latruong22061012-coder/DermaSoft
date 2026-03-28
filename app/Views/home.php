@@ -218,6 +218,7 @@
                                        class="form-control form-control-lg border-primary border-opacity-50"
                                        placeholder="Nguyễn Văn A"
                                        value="<?= htmlspecialchars($currentUser['HoTen'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                       <?= !empty($isLoggedIn) ? 'readonly' : '' ?>
                                        required>
                                 <div class="invalid-feedback">Vui lòng nhập họ tên (ít nhất 3 ký tự).</div>
                             </div>
@@ -227,8 +228,12 @@
                                        class="form-control form-control-lg border-primary border-opacity-50"
                                        placeholder="09xxxxxxxx"
                                        value="<?= htmlspecialchars($currentUser['SoDienThoai'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                       <?= !empty($isLoggedIn) ? 'readonly' : '' ?>
                                        required>
                                 <div class="invalid-feedback">Số điện thoại không hợp lệ.</div>
+                                <?php if (!empty($isLoggedIn)): ?>
+                                <div class="form-text text-success small"><i class="bi bi-shield-check me-1"></i>Thông tin được xác thực từ tài khoản của bạn</div>
+                                <?php endif; ?>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-medium text-muted small" for="bookingDate">Ngày hẹn <span class="text-danger">*</span></label>
@@ -341,6 +346,12 @@
 
     <script src="<?= defined('BASE_URL') ? BASE_URL : '/' ?>public/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="<?= defined('BASE_URL') ? BASE_URL : '/' ?>public/assets/vendor/aos/aos.js"></script>
+    <?php if (!empty($isLoggedIn) && $currentUser): ?>
+    <script>
+        window._BOOKING_USER_NAME = <?= json_encode($currentUser['HoTen'] ?? '', JSON_UNESCAPED_UNICODE) ?>;
+        window._BOOKING_USER_PHONE = <?= json_encode($currentUser['SoDienThoai'] ?? '', JSON_UNESCAPED_UNICODE) ?>;
+    </script>
+    <?php endif; ?>
     <script src="<?= defined('BASE_URL') ? BASE_URL : '/' ?>public/assets/js/script.js"></script>
 </body>
 </html>

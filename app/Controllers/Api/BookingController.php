@@ -2,6 +2,11 @@
 /**
  * Booking API Controller
  * Xử lý đặt lịch hẹn từ website (cả khách vãng lai lẫn user đã login)
+ *
+ * Luồng bảo mật:
+ * - User đã đăng nhập: dùng HoTen/SĐT từ session (không cho sửa)
+ * - Khách vãng lai: nếu SĐT thuộc tài khoản đã đăng ký → từ chối, yêu cầu đăng nhập
+ * - Rate limit: tối đa 5 lịch hẹn chờ xử lý / SĐT
  */
 
 namespace App\Controllers\Api;
@@ -20,7 +25,14 @@ class BookingController extends ApiController
     {
         Auth::startSession();
 
+        $currentUser = Auth::getCurrentUser();
         $data = $this->getJSON();
+
+        // Nếu user đã đăng nhập → ép dùng thông tin từ session (không cho giả mạo)
+        if ($currentUser) {
+            $data['hoTen'] = $currentUser['HoTen'];
+            $data['soDienThoai'] = $currentUser['SoDienThoai'];
+        }
 
         $errors = $this->validate($data, [
             'hoTen'      => 'required|minlen:3',
@@ -38,6 +50,26 @@ class BookingController extends ApiController
         if (!preg_match('/^(0)(3[2-9]|5[6-9]|7[06-9]|8[0-9]|9[0-9])[0-9]{7}$/', $phone)) {
             $this->error('Số điện thoại không đúng định dạng', null, 400);
             return;
+        }
+
+        // Khách vãng lai: kiểm tra SĐT có thuộc tài khoản đã đăng ký không
+        if (!$currentUser) {
+            try {
+                $registeredUser = Database::fetchOne(
+                    "SELECT MaNguoiDung FROM NguoiDung WHERE SoDienThoai = ? AND IsDeleted = 0",
+                    [$phone]
+                );
+                if ($registeredUser) {
+                    $this->error(
+                        'Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập để đặt lịch.',
+                        ['requireLogin' => true],
+                        403
+                    );
+                    return;
+                }
+            } catch (\Exception $e) {
+                error_log('Lỗi kiểm tra SĐT đã đăng ký: ' . $e->getMessage());
+            }
         }
 
         // Validate & parse datetime (format: Y-m-d H:i)
@@ -64,8 +96,24 @@ class BookingController extends ApiController
         $ghiChu = isset($data['ghiChu']) ? trim($data['ghiChu']) : null;
         if ($ghiChu === '') $ghiChu = null;
 
+        // Rate limit: tối đa 5 lịch hẹn đang chờ xử lý / SĐT
+        try {
+            $pendingCount = Database::fetchOne(
+                "SELECT COUNT(*) AS cnt
+                 FROM LichHen lh
+                 JOIN BenhNhan bn ON lh.MaBenhNhan = bn.MaBenhNhan
+                 WHERE bn.SoDienThoai = ? AND lh.TrangThai IN (1, 2)",
+                [$phone]
+            );
+            if ($pendingCount && (int)$pendingCount['cnt'] >= 5) {
+                $this->error('Bạn đã có quá nhiều lịch hẹn đang chờ xử lý. Vui lòng chờ hoàn thành hoặc hủy bớt.', null, 429);
+                return;
+            }
+        } catch (\Exception $e) {
+            error_log('Lỗi kiểm tra rate limit: ' . $e->getMessage());
+        }
+
         // Kiểm tra trùng lịch ở PHP trước khi gọi SP
-        // (tránh vấn đề encoding với thông báo lỗi tiếng Việt từ pdo_sqlsrv trên Windows)
         try {
             $duplicate = Database::fetchOne(
                 "SELECT TOP 1 lh.MaLichHen

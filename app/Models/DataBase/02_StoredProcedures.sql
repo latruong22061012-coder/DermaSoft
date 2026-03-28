@@ -426,6 +426,7 @@ GO
 
 -- ============================================================
 -- SP_DatLichHen — Đặt lịch hẹn từ website (khách / thành viên)
+-- Bảo vệ: Không ghi đè HoTen nếu BenhNhan đã tồn tại
 -- ============================================================
 CREATE PROCEDURE SP_DatLichHen
     @HoTen       NVARCHAR(100),
@@ -440,7 +441,7 @@ BEGIN
 
         DECLARE @MaBenhNhan INT;
 
-        -- Upsert BenhNhan theo SĐT
+        -- Tìm BenhNhan theo SĐT (không ghi đè HoTen nếu đã tồn tại)
         SELECT @MaBenhNhan = MaBenhNhan
         FROM   BenhNhan
         WHERE  SoDienThoai = @SoDienThoai AND IsDeleted = 0;
@@ -450,10 +451,6 @@ BEGIN
             INSERT INTO BenhNhan (HoTen, SoDienThoai)
             VALUES (@HoTen, @SoDienThoai);
             SET @MaBenhNhan = SCOPE_IDENTITY();
-        END
-        ELSE
-        BEGIN
-            UPDATE BenhNhan SET HoTen = @HoTen WHERE MaBenhNhan = @MaBenhNhan;
         END;
 
         -- Kiểm tra trùng lịch cùng ngày (TrangThai 1=chờ, 2=xác nhận)

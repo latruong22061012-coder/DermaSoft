@@ -130,7 +130,7 @@ document.addEventListener("DOMContentLoaded", function () {
           bookingSubmitBtn.innerHTML =
             '<i class="bi bi-calendar-check me-2"></i>GỬI YÊU CẦU ĐẶT LỊCH';
 
-          if (result.status === 200) {
+          if (result.status === 200 || result.status === 201) {
             bookingForm.reset();
             // Restore default date after reset
             if (bookingDateInput) {
@@ -138,7 +138,25 @@ document.addEventListener("DOMContentLoaded", function () {
               t.setDate(t.getDate() + 1);
               bookingDateInput.value = t.toISOString().split("T")[0];
             }
+            // Khôi phục lại giá trị readonly nếu user đã đăng nhập
+            if (nameEl.hasAttribute("readonly") && window._BOOKING_USER_NAME) {
+              nameEl.value = window._BOOKING_USER_NAME;
+              phoneEl.value = window._BOOKING_USER_PHONE;
+            }
             showBookingFeedback("✅ " + result.message, "success");
+          } else if (result.data && result.data.requireLogin) {
+            // SĐT thuộc tài khoản đã đăng ký → hiện nút đăng nhập
+            if (!bookingFeedback) return;
+            bookingFeedback.className = "alert alert-warning mb-4";
+            bookingFeedback.innerHTML =
+              '<i class="bi bi-shield-exclamation me-2"></i>' +
+              result.message +
+              ' <a href="index.php?route=login" class="alert-link fw-bold">Đăng nhập ngay</a>';
+            bookingFeedback.classList.remove("d-none");
+            bookingFeedback.scrollIntoView({
+              behavior: "smooth",
+              block: "nearest",
+            });
           } else {
             showBookingFeedback(
               result.message || "Lỗi đặt lịch. Vui lòng thử lại.",
