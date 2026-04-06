@@ -1,0 +1,349 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{641241E1-FAD7-495F-8FD8-1A01C1AA3AEF}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>DermaSoft</RootNamespace>
+    <AssemblyName>DermaSoft</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="DermaSoft\Enums\DiemDanhGiaEnum.cs" />
+    <Compile Include="DermaSoft\Enums\ENUMS_QUICK_REFERENCE.cs" />
+    <Compile Include="DermaSoft\Enums\LoaiThongBaoEnum.cs" />
+    <Compile Include="DermaSoft\Enums\TrangThaiLichHenEnum.cs" />
+    <Compile Include="DermaSoft\Enums\TrangThaiOTPEnum.cs" />
+    <Compile Include="DermaSoft\Enums\TrangThaiPhieuKhamEnum.cs" />
+    <Compile Include="DermaSoft\Enums\TrangThaiTaiKhoanEnum.cs" />
+    <Compile Include="DermaSoft\Enums\VaiTroEnum.cs" />
+    <Compile Include="DermaSoft\Forms\AppointmentForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\AppointmentForm.Designer.cs">
+      <DependentUpon>AppointmentForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\BaoCaoDoanhThuForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\BaoCaoDoanhThuForm.Designer.cs">
+      <DependentUpon>BaoCaoDoanhThuForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\BaoCaoKhoForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\BaoCaoKhoForm.Designer.cs">
+      <DependentUpon>BaoCaoKhoForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\BenhNhanDetailForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\BenhNhanDetailForm.Designer.cs">
+      <DependentUpon>BenhNhanDetailForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\ChangePasswordForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\ChangePasswordForm.Designer.cs">
+      <DependentUpon>ChangePasswordForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\DanhGiaForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\DanhGiaForm.Designer.cs">
+      <DependentUpon>DanhGiaForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\DashboardBacSiForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\DashboardBacSiForm.Designer.cs">
+      <DependentUpon>DashboardBacSiForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\DashboardForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\DashboardForm.Designer.cs">
+      <DependentUpon>DashboardForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\DashboardLeTanForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\DashboardLeTanForm.Designer.cs">
+      <DependentUpon>DashboardLeTanForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\HinhAnhForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\HinhAnhForm.Designer.cs">
+      <DependentUpon>HinhAnhForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\InvoiceForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\InvoiceForm.Designer.cs">
+      <DependentUpon>InvoiceForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\LoginForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\LoginForm.Designer.cs">
+      <DependentUpon>LoginForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\MainForm.Designer.cs">
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\MemberForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\MemberForm.Designer.cs">
+      <DependentUpon>MemberForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\NhapKhoForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\NhapKhoForm.Designer.cs">
+      <DependentUpon>NhapKhoForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\PatientForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\PatientForm.Designer.cs">
+      <DependentUpon>PatientForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\PhanCongCaForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\PhanCongCaForm.Designer.cs">
+      <DependentUpon>PhanCongCaForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\PhieuKhamForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\PhieuKhamForm.Designer.cs">
+      <DependentUpon>PhieuKhamForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\ProfileForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\ProfileForm.Designer.cs">
+      <DependentUpon>ProfileForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\ReportForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\ReportForm.Designer.cs">
+      <DependentUpon>ReportForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\ServiceForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\ServiceForm.Designer.cs">
+      <DependentUpon>ServiceForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\SettingsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\SettingsForm.Designer.cs">
+      <DependentUpon>SettingsForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\StaffForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\StaffForm.Designer.cs">
+      <DependentUpon>StaffForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\ThuocForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\ThuocForm.Designer.cs">
+      <DependentUpon>ThuocForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\TiepNhanForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\TiepNhanForm.Designer.cs">
+      <DependentUpon>TiepNhanForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\TonKhoForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\TonKhoForm.Designer.cs">
+      <DependentUpon>TonKhoForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Models\AppointmentModel.cs" />
+    <Compile Include="DermaSoft\Models\InvoiceModel.cs" />
+    <Compile Include="DermaSoft\Models\MemberModel.cs" />
+    <Compile Include="DermaSoft\Models\PatientModel.cs" />
+    <Compile Include="DermaSoft\Models\PhieuKhamModel.cs" />
+    <Compile Include="DermaSoft\Models\PhieuNhapKhoModel.cs" />
+    <Compile Include="DermaSoft\Models\ServiceModel.cs" />
+    <Compile Include="DermaSoft\Models\StaffModel.cs" />
+    <Compile Include="DermaSoft\Models\ThuocModel.cs" />
+    <Compile Include="DermaSoft\Models\VaiTroModel.cs" />
+    <Compile Include="DermaSoft\Data\DatabaseConnection.cs" />
+    <Compile Include="DermaSoft\Services\DataService.cs" />
+    <Compile Include="DermaSoft\Theme\AppConstants.cs" />
+    <Compile Include="DermaSoft\Theme\AppFonts.cs" />
+    <Compile Include="DermaSoft\Theme\AppSettings.cs" />
+    <Compile Include="DermaSoft\Theme\ColorScheme.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="DermaSoft\Forms\ChangePasswordForm.resx">
+      <DependentUpon>ChangePasswordForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DermaSoft\Forms\LoginForm.resx">
+      <DependentUpon>LoginForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DermaSoft\Forms\MainForm.resx">
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <None Include="DermaSoft\app.manifest" />
+    <None Include="DermaSoft\Enums\README.md" />
+    <None Include="ENUM_SUMMARY_VI.md" />
+    <None Include="packages.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="DermaSoft\Data\01_Tables_Data.sql" />
+    <Content Include="DermaSoft\Data\02_StoredProcedures.sql" />
+    <Content Include="DermaSoft\Data\03_Triggers.sql" />
+    <Content Include="DermaSoft\Data\04_Views.sql" />
+    <Content Include="DermaSoft\Data\05_Constraints.sql" />
+    <Content Include="DermaSoft\Data\05_SeedTestData.sql" />
+    <Content Include="DermaSoft\Data\06_CaiDatHeThong.sql" />
+    <Content Include="DermaSoft\Data\MIGRATION_24_03_2026.sql" />
+    <Content Include="ENUM_COMPLETION_REPORT.txt" />
+    <None Include="Resources\logo.png" />
+    <None Include="Resources\logo1.png" />
+    <None Include="Resources\logo2.png" />
+    <None Include="Resources\logoMain.png" />
+    <None Include="Resources\logo%281%291.png" />
+    <None Include="Resources\Iconsmind-Outline-Close.512.png" />
+    <None Include="Resources\Ionic-Ionicons-Close.512.png" />
+    <None Include="Resources\logoRound.png" />
+    <None Include="Resources\closeIcon50.png" />
+    <Content Include="Wireframes\DermaSoft_Wireframes.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="BCrypt.Net-Next, Version=4.0.3.0, Culture=neutral, PublicKeyToken=1e11be04b6288443, processorArchitecture=MSIL">
+      <HintPath>packages\BCrypt.Net-Next.4.0.3\lib\net48\BCrypt.Net-Next.dll</HintPath>
+    </Reference>
+    <Reference Include="Guna.UI2, Version=2.0.4.7, Culture=neutral, PublicKeyToken=8b9d14aa5142e261, processorArchitecture=MSIL">
+      <HintPath>packages\Guna.UI2.WinForms.2.0.4.7\lib\net48\Guna.UI2.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CodeAnalysis, Version=5.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.CodeAnalysis.Common.5.3.0\lib\netstandard2.0\Microsoft.CodeAnalysis.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CodeAnalysis.VisualBasic, Version=5.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.CodeAnalysis.VisualBasic.5.3.0\lib\netstandard2.0\Microsoft.CodeAnalysis.VisualBasic.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="OxyPlot, Version=2.1.2.0, Culture=neutral, PublicKeyToken=638079a8f0bd61e9, processorArchitecture=MSIL">
+      <HintPath>packages\OxyPlot.Core.2.1.2\lib\net45\OxyPlot.dll</HintPath>
+    </Reference>
+    <Reference Include="OxyPlot.WindowsForms, Version=2.1.2.0, Culture=neutral, PublicKeyToken=245eacd6b5d2d338, processorArchitecture=MSIL">
+      <HintPath>packages\OxyPlot.WindowsForms.2.1.2\lib\net45\OxyPlot.WindowsForms.dll</HintPath>
+    </Reference>
+    <Reference Include="System">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Buffers, Version=4.0.4.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Buffers.4.6.0\lib\net462\System.Buffers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Collections.Immutable, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Collections.Immutable.9.0.0\lib\net462\System.Collections.Immutable.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Design">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Design.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Management">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Management.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Memory, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Memory.4.6.0\lib\net462\System.Memory.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Numerics.Vectors, Version=4.1.5.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Numerics.Vectors.4.6.0\lib\net462\System.Numerics.Vectors.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Reflection.Metadata, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Reflection.Metadata.9.0.0\lib\net462\System.Reflection.Metadata.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Runtime.CompilerServices.Unsafe.6.1.0\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Text.Encoding.CodePages, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Text.Encoding.CodePages.8.0.0\lib\net462\System.Text.Encoding.CodePages.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.1.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Threading.Tasks.Extensions.4.6.0\lib\net462\System.Threading.Tasks.Extensions.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Web.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Configuration" />
+  </ItemGroup>
+  <ItemGroup>
+    <Analyzer Include="packages\Microsoft.CodeAnalysis.Analyzers.5.3.0\analyzers\dotnet\cs\Microsoft.CodeAnalysis.Analyzers.dll" />
+    <Analyzer Include="packages\Microsoft.CodeAnalysis.Analyzers.5.3.0\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CSharp.Analyzers.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="images\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets" Condition="Exists('..\packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets')" />
+  <Import Project="packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets" Condition="Exists('packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets')" />
+</Project>

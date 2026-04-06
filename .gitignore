@@ -1,5 +1,20 @@
-﻿################################################################################
-# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
-################################################################################
-
+﻿## .NET / Visual Studio
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+packages/
+.vs/
+*.user
+*.suo
+*.cache
+*.rsuser
+*.exe
+*.dll
+*.pdb
+*.log
+TestResults/
+Thumbs.db
+Desktop.ini
+.DS_Store
 /DermaSoft/Wireframes/DermaSoft_Wireframes.html
