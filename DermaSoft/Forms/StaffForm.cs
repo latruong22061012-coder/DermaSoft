@@ -375,7 +375,8 @@ namespace DermaSoft.Forms
                 Font = new Font("Segoe UI", 11f, FontStyle.Bold),
                 ForeColor = ColorScheme.PrimaryDark,
                 Location = new Point(12, 4),
-                AutoSize = true,
+                Size = new Size(W - 28, 28),
+                AutoSize = false,
                 BackColor = Color.Transparent,
             };
             pnlTitleSection.Controls.Add(lblFormTitle);
@@ -443,7 +444,7 @@ namespace DermaSoft.Forms
             };
             pnlCard.Controls.Add(lblSmall);
             y += 20;
-            txtTenDangNhap = TaoGuna2TextBox(new Point(X, y), new Size(W - 82, 36), "vdNam");
+            txtTenDangNhap = TaoGuna2TextBox(new Point(X, y), new Size(W - 88, 36), "vdNam");
             pnlCard.Controls.Add(txtTenDangNhap);
             var btnGen = new Guna2Button
             {
@@ -454,8 +455,8 @@ namespace DermaSoft.Forms
                 BorderColor = ColorScheme.PrimaryLight,
                 BorderThickness = 1,
                 BorderRadius = 18,
-                Location = new Point(X + W - 76, y),
-                Size = new Size(76, 36),
+                Location = new Point(X + W - 80, y),
+                Size = new Size(80, 36),
                 Cursor = Cursors.Hand,
             };
             btnGen.Click += (s, e) => txtTenDangNhap.Text = SinhTenDangNhap();
@@ -465,7 +466,7 @@ namespace DermaSoft.Forms
             // ── Mật khẩu tạm ──
             pnlCard.Controls.Add(TaoLabel("Mật khẩu tạm", new Point(X, y), true));
             y += 20;
-            txtMatKhau = TaoGuna2TextBox(new Point(X, y), new Size(W - 82, 36), "");
+            txtMatKhau = TaoGuna2TextBox(new Point(X, y), new Size(W - 88, 36), "");
             txtMatKhau.Text = AppSettings.MatKhauMacDinh;
             txtMatKhau.UseSystemPasswordChar = true;
             pnlCard.Controls.Add(txtMatKhau);
@@ -492,7 +493,7 @@ namespace DermaSoft.Forms
             y += 44;
 
             // ── Notif chip (wireframe: .notif-chip) ──
-            var pnlNote = new Panel { Location = new Point(X, y), Size = new Size(W, 40), BackColor = Color.Transparent };
+            var pnlNote = new Panel { Location = new Point(X, y), Size = new Size(W, 52), BackColor = Color.Transparent };
             pnlNote.Paint += (s, e) =>
             {
                 var g = e.Graphics;
@@ -512,11 +513,12 @@ namespace DermaSoft.Forms
                 Font = AppFonts.Small,
                 ForeColor = ColorScheme.TextMid,
                 Location = new Point(14, 6),
-                Size = new Size(W - 20, 28),
+                Size = new Size(W - 28, 40),
                 BackColor = Color.Transparent,
+                AutoSize = false,
             });
             pnlCard.Controls.Add(pnlNote);
-            y += 48;
+            y += 60;
 
             // Error
             lblError = new Label { Font = AppFonts.Small, ForeColor = ColorScheme.Danger, Location = new Point(X, y), Size = new Size(W, 18), Text = "" };

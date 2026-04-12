@@ -69,7 +69,7 @@ namespace DermaSoft.Forms
             pnlRight = new Panel
             {
                 Dock = DockStyle.Right,
-                Width = 380,
+                Width = 420,
                 BackColor = Color.Transparent,
                 Padding = new Padding(16, 0, 0, 0),
             };
@@ -314,7 +314,7 @@ namespace DermaSoft.Forms
             pnlRight.Controls.Add(pnlCard);
 
             const int X = 16;
-            int W = 328;
+            int W = 368;
             int y = 12;
 
             // ── Title ──
@@ -337,7 +337,8 @@ namespace DermaSoft.Forms
                 Font = new Font("Segoe UI", 11f, FontStyle.Bold),
                 ForeColor = ColorScheme.PrimaryDark,
                 Location = new Point(12, 4),
-                AutoSize = true,
+                Size = new Size(W - 28, 28),
+                AutoSize = false,
                 BackColor = Color.Transparent,
             };
             pnlTitleSection.Controls.Add(lblFormTitle);
@@ -373,7 +374,7 @@ namespace DermaSoft.Forms
             y += 76;
 
             // ── Notif chip ──
-            var pnlNote = new Panel { Location = new Point(X, y), Size = new Size(W, 40), BackColor = Color.Transparent };
+            var pnlNote = new Panel { Location = new Point(X, y), Size = new Size(W, 52), BackColor = Color.Transparent };
             pnlNote.Paint += (s, e) =>
             {
                 var g = e.Graphics;
@@ -392,11 +393,12 @@ namespace DermaSoft.Forms
                 Font = AppFonts.Small,
                 ForeColor = ColorScheme.TextMid,
                 Location = new Point(14, 6),
-                Size = new Size(W - 20, 28),
+                Size = new Size(W - 28, 40),
                 BackColor = Color.Transparent,
+                AutoSize = false,
             });
             pnlCard.Controls.Add(pnlNote);
-            y += 48;
+            y += 60;
 
             // Error
             lblError = new Label { Font = AppFonts.Small, ForeColor = ColorScheme.Danger, Location = new Point(X, y), Size = new Size(W, 18), Text = "" };

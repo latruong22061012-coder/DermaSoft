@@ -30,10 +30,3 @@ GO
 -- (nếu bị ghi đè bởi settings version cũ)
 -- ═══════════════════════════════════════
 
-UPDATE ThongTinPhongKham
-SET MoTa = NULL
-WHERE MoTa LIKE 'NGUONG_THAP=%'
-   OR MoTa LIKE 'MK_MAC_DINH=%';
-
-PRINT N'✓ Đã khôi phục cột MoTa trong ThongTinPhongKham (nếu bị ghi đè).'
-GO

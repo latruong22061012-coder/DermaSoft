@@ -127,12 +127,13 @@ namespace DermaSoft.Forms
                         lichHenSapToi = Convert.ToInt32(cmd.ExecuteScalar());
                     }
 
-                    // Thuốc sắp hết hạn (trong 30 ngày)
+                    // Thuốc sắp hết hạn (trong 90 ngày — đồng bộ với TonKhoForm)
                     using (var cmd = new SqlCommand(
-                        @"SELECT COUNT(*) FROM Thuoc 
-                          WHERE HanSuDung IS NOT NULL 
-                            AND HanSuDung <= DATEADD(DAY, 30, GETDATE()) 
-                            AND HanSuDung > GETDATE()", conn))
+                        @"SELECT COUNT(DISTINCT ctk.MaThuoc) 
+                          FROM ChiTietNhapKho ctk
+                          WHERE ctk.SoLuongConLai > 0
+                            AND ctk.HanSuDung <= DATEADD(DAY, 90, GETDATE()) 
+                            AND ctk.HanSuDung > GETDATE()", conn))
                     {
                         thuocSapHetHan = Convert.ToInt32(cmd.ExecuteScalar());
                     }
@@ -350,14 +351,13 @@ namespace DermaSoft.Forms
             };
             card.Controls.Add(pnlData);
 
-            // Query lịch hẹn sắp tới
+            // Query lịch hẹn sắp tới (không giới hạn số lượng)
             var rows = new List<Tuple<string, string, string, int>>();
             try
             {
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(
-                    @"SELECT TOP 10 
-                             lh.ThoiGianHen, 
+                    @"SELECT lh.ThoiGianHen, 
                              CASE 
                                 WHEN bn.HoTen IS NOT NULL THEN bn.HoTen
                                 WHEN lh.SoDienThoaiKhach IS NOT NULL THEN N'SĐT: ' + lh.SoDienThoaiKhach
@@ -386,35 +386,46 @@ namespace DermaSoft.Forms
             {
                 pnlData.Controls.Add(new Label
                 {
-                    Text = "Lỗi: " + ex.Message,
+                    Text = "L\u1ed7i: " + ex.Message,
                     Font = AppFonts.Small, ForeColor = ColorScheme.Danger,
                     Location = new Point(16, 4), AutoSize = true, BackColor = Color.Transparent,
                 });
             }
 
+            // Panel con chứa nội dung — chiều cao tự tính theo số dòng để cuộn mượt
+            int rowHeight = 30;
+            int innerH = Math.Max(pnlData.Height, rows.Count * rowHeight + 8);
+            var pnlInner = new Panel
+            {
+                Location = new Point(0, 0),
+                Size = new Size(pnlData.Width - SystemInformation.VerticalScrollBarWidth - 2, innerH),
+                BackColor = Color.White,
+            };
+            pnlData.Controls.Add(pnlInner);
+
             int rowY = 4;
             foreach (var row in rows)
             {
-                pnlData.Controls.Add(new Label { Text = row.Item1, Font = AppFonts.Body, ForeColor = ColorScheme.TextDark, Location = new Point(col1, rowY), AutoSize = true, BackColor = Color.Transparent });
-                pnlData.Controls.Add(new Label { Text = row.Item2, Font = AppFonts.Body, ForeColor = ColorScheme.TextDark, Location = new Point(col2, rowY), AutoSize = true, BackColor = Color.Transparent });
+                pnlInner.Controls.Add(new Label { Text = row.Item1, Font = AppFonts.Body, ForeColor = ColorScheme.TextDark, Location = new Point(col1, rowY), AutoSize = true, BackColor = Color.Transparent });
+                pnlInner.Controls.Add(new Label { Text = row.Item2, Font = AppFonts.Body, ForeColor = ColorScheme.TextDark, Location = new Point(col2, rowY), AutoSize = true, BackColor = Color.Transparent });
                 int maxGhiChu = 15;
                 string ghiChuDisplay = row.Item3.Length > maxGhiChu ? row.Item3.Substring(0, maxGhiChu) + "..." : row.Item3;
-                pnlData.Controls.Add(new Label { Text = ghiChuDisplay, Font = AppFonts.Small, ForeColor = ColorScheme.TextGray, Location = new Point(col3, rowY), AutoSize = true, BackColor = Color.Transparent });
+                pnlInner.Controls.Add(new Label { Text = ghiChuDisplay, Font = AppFonts.Small, ForeColor = ColorScheme.TextGray, Location = new Point(col3, rowY), AutoSize = true, BackColor = Color.Transparent });
 
                 string ttText = row.Item4 == 0 ? "Ch\u1edd" : "X\u00e1c nh\u1eadn";
                 Color badgeColor = row.Item4 == 0 ? ColorScheme.Warning : ColorScheme.Success;
-                pnlData.Controls.Add(new Label
+                pnlInner.Controls.Add(new Label
                 {
                     Text = ttText, Font = AppFonts.Badge, ForeColor = Color.White,
                     BackColor = badgeColor, TextAlign = ContentAlignment.MiddleCenter,
                     Location = new Point(col4, rowY - 2), Size = new Size(70, 22),
                 });
 
-                rowY += 30;
+                rowY += rowHeight;
             }
 
             if (rows.Count == 0)
-                pnlData.Controls.Add(new Label { Text = "Kh\u00f4ng c\u00f3 l\u1ecbch h\u1eb9n s\u1eafp t\u1edbi", Font = AppFonts.Body, ForeColor = ColorScheme.TextLight, Location = new Point(col1, rowY), AutoSize = true, BackColor = Color.Transparent });
+                pnlInner.Controls.Add(new Label { Text = "Kh\u00f4ng c\u00f3 l\u1ecbch h\u1eb9n s\u1eafp t\u1edbi", Font = AppFonts.Body, ForeColor = ColorScheme.TextLight, Location = new Point(col1, rowY), AutoSize = true, BackColor = Color.Transparent });
 
             pnlContent.Controls.Add(card);
         }
@@ -530,13 +541,16 @@ namespace DermaSoft.Forms
             {
                 using (var conn = DatabaseConnection.GetConnection())
                 {
+                    // Thuốc sắp hết hạn (< 90 ngày — đồng bộ với TonKhoForm)
                     using (var cmd = new SqlCommand(
-                        @"SELECT TOP 3 TenThuoc, SoLuongTon, DATEDIFF(DAY, GETDATE(), HanSuDung) AS ConLai
-                          FROM Thuoc 
-                          WHERE HanSuDung IS NOT NULL 
-                            AND HanSuDung <= DATEADD(DAY, 30, GETDATE()) 
-                            AND HanSuDung > GETDATE()
-                          ORDER BY HanSuDung ASC", conn))
+                        @"SELECT t.TenThuoc, ctk.SoLuongConLai, 
+                                 DATEDIFF(DAY, GETDATE(), ctk.HanSuDung) AS ConLai
+                          FROM ChiTietNhapKho ctk
+                          INNER JOIN Thuoc t ON t.MaThuoc = ctk.MaThuoc
+                          WHERE ctk.SoLuongConLai > 0
+                            AND ctk.HanSuDung <= DATEADD(DAY, 90, GETDATE()) 
+                            AND ctk.HanSuDung > GETDATE()
+                          ORDER BY ctk.HanSuDung ASC", conn))
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
@@ -544,14 +558,17 @@ namespace DermaSoft.Forms
                             string ten = reader.GetString(0);
                             int sl = Convert.ToInt32(reader.GetValue(1));
                             int conLai = Convert.ToInt32(reader.GetValue(2));
+                            // < 30 ngày = Danger (đỏ), 30-90 ngày = Warning (vàng)
+                            Color mau = conLai < 30 ? ColorScheme.Danger : ColorScheme.Warning;
                             alerts.Add(Tuple.Create(
                                 "\uD83D\uDC8A " + ten + " h\u1ebft h\u1ea1n trong " + conLai + " ng\u00e0y (" + sl + " c\u00f2n)",
-                                ColorScheme.Danger));
+                                mau));
                         }
                     }
 
+                    // Thuốc sắp hết tồn kho (tổng tồn <= 5)
                     using (var cmd = new SqlCommand(
-                        @"SELECT TOP 3 TenThuoc, SoLuongTon 
+                        @"SELECT TenThuoc, SoLuongTon 
                           FROM Thuoc 
                           WHERE SoLuongTon <= 5 AND SoLuongTon > 0
                           ORDER BY SoLuongTon ASC", conn))
