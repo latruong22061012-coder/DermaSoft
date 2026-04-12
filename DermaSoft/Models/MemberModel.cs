@@ -37,5 +37,7 @@ namespace DermaSoft.Models
         public string   TenBenhNhan     { get; set; }  // Tên bệnh nhân  (JOIN BenhNhan)
         public string   TenHang         { get; set; }  // Tên hạng       (JOIN HangThanhVien)
         public string   MauHangHex      { get; set; }  // Màu hạng       (JOIN HangThanhVien)
+        public string SoDienThoai { get; set; }  // SĐT bệnh nhân (JOIN BenhNhan)
+        public string MaBenhNhanCode { get; set; }  // "BN001" format để hiển thị UI
     }
 }

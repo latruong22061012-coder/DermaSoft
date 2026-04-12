@@ -103,6 +103,10 @@
     <Compile Include="DermaSoft\Forms\HinhAnhForm.Designer.cs">
       <DependentUpon>HinhAnhForm.cs</DependentUpon>
     </Compile>
+<<<<<<< HEAD
+    <Compile Include="DermaSoft\Forms\HoaDonPrinter.cs" />
+=======
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
     <Compile Include="DermaSoft\Forms\InvoiceForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -121,6 +125,21 @@
     <Compile Include="DermaSoft\Forms\MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
+<<<<<<< HEAD
+    <Compile Include="DermaSoft\Forms\MainFormBacSi.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\MainFormBacSi.Designer.cs">
+      <DependentUpon>MainFormBacSi.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\MainFormLeTan.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\MainFormLeTan.Designer.cs">
+      <DependentUpon>MainFormLeTan.cs</DependentUpon>
+    </Compile>
+=======
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
     <Compile Include="DermaSoft\Forms\MemberForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -217,15 +236,45 @@
     <Compile Include="DermaSoft\Theme\ColorScheme.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+<<<<<<< HEAD
+    <EmbeddedResource Include="DermaSoft\Forms\AppointmentForm.resx">
+      <DependentUpon>AppointmentForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DermaSoft\Forms\BenhNhanDetailForm.resx">
+      <DependentUpon>BenhNhanDetailForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="DermaSoft\Forms\ChangePasswordForm.resx">
       <DependentUpon>ChangePasswordForm.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="DermaSoft\Forms\InvoiceForm.resx">
+      <DependentUpon>InvoiceForm.cs</DependentUpon>
+    </EmbeddedResource>
+=======
+    <EmbeddedResource Include="DermaSoft\Forms\ChangePasswordForm.resx">
+      <DependentUpon>ChangePasswordForm.cs</DependentUpon>
+    </EmbeddedResource>
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
     <EmbeddedResource Include="DermaSoft\Forms\LoginForm.resx">
       <DependentUpon>LoginForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="DermaSoft\Forms\MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
+<<<<<<< HEAD
+    <EmbeddedResource Include="DermaSoft\Forms\MemberForm.resx">
+      <DependentUpon>MemberForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DermaSoft\Forms\PatientForm.resx">
+      <DependentUpon>PatientForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DermaSoft\Forms\PhieuKhamForm.resx">
+      <DependentUpon>PhieuKhamForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DermaSoft\Forms\TiepNhanForm.resx">
+      <DependentUpon>TiepNhanForm.cs</DependentUpon>
+    </EmbeddedResource>
+=======
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -335,6 +384,10 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Data" />
     <Reference Include="System.Configuration" />
+<<<<<<< HEAD
+    <Reference Include="System.Xml" />
+=======
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
   </ItemGroup>
   <ItemGroup>
     <Analyzer Include="packages\Microsoft.CodeAnalysis.Analyzers.5.3.0\analyzers\dotnet\cs\Microsoft.CodeAnalysis.Analyzers.dll" />

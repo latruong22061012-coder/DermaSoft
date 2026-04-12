@@ -2,8 +2,10 @@ CREATE DATABASE DERMASOFT;
 GO
 USE DERMASOFT;
 GO
-select *
-from XacThucOTP
+
+
+
+
 -- ============================================================
 -- PHẦN 1: NHÓM 1 - DANH MỤC & CON NGƯỜI
 -- ============================================================
