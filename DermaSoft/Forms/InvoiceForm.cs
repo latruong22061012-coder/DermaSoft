@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 using System;
 using System.Data;
 using System.Data.SqlClient;
@@ -513,3 +514,17 @@ namespace DermaSoft.Forms
         private void lblClinicSDT_Click(object sender, EventArgs e) { }
     }
 }
+=======
+using System.Windows.Forms;
+
+namespace DermaSoft.Forms
+{
+    public partial class InvoiceForm : Form
+    {
+        public InvoiceForm()
+        {
+            InitializeComponent();
+        }
+    }
+}
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

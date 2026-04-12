@@ -1,12 +1,17 @@
+<<<<<<< HEAD
 using System;
 using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using DermaSoft.Data;
+=======
+using System.Windows.Forms;
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
 namespace DermaSoft.Forms
 {
     /// <summary>
+<<<<<<< HEAD
     /// Dashboard dành cho Bác Sĩ.
     /// Hiển thị: 3 KPI cards | Queue bệnh nhân chờ khám | Lịch làm việc tuần này
     /// </summary>
@@ -353,3 +358,16 @@ namespace DermaSoft.Forms
 
     }
 }
+=======
+    /// Dashboard Bác Sĩ — frm-dashboard-bs trong wireframe.
+    /// Hiển thị: queue bệnh nhân hôm nay, lịch khám, thống kê nhanh.
+    /// </summary>
+    public partial class DashboardBacSiForm : Form
+    {
+        public DashboardBacSiForm()
+        {
+            InitializeComponent();
+        }
+    }
+}
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

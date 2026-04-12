@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 using System;
 using System.Data;
 using System.Drawing;
@@ -348,3 +349,21 @@ namespace DermaSoft.Forms
         }
     }
 }
+=======
+using System.Windows.Forms;
+
+namespace DermaSoft.Forms
+{
+    /// <summary>
+    /// Form Hình Ảnh Bệnh Lý — frm-hinhanh trong wireframe.
+    /// Quản lý HinhAnhBenhLy: upload ảnh, xem gallery theo PhieuKham.
+    /// </summary>
+    public partial class HinhAnhForm : Form
+    {
+        public HinhAnhForm()
+        {
+            InitializeComponent();
+        }
+    }
+}
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

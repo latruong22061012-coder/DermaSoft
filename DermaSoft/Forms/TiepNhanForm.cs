@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 using System;
 using System.Data;
 using System.Drawing;
@@ -5,10 +6,14 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using DermaSoft.Data;
 using DermaSoft.Models;
+=======
+using System.Windows.Forms;
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
 namespace DermaSoft.Forms
 {
     /// <summary>
+<<<<<<< HEAD
     /// Form Tiếp Nhận Bệnh Nhân — Lễ Tân tìm BN, tạo PhieuKham từ LichHen.
     /// Luồng: Tìm BN theo SĐT → chọn Bác sĩ + Lịch hẹn → Tiếp nhận → INSERT PhieuKham.
     /// </summary>
@@ -481,3 +486,16 @@ namespace DermaSoft.Forms
         private void guna2GradientButton1_Click(object sender, EventArgs e) => BtnTiepNhan_Click(sender, e);
     }
 }
+=======
+    /// Form Tiếp Nhận Bệnh Nhân — frm-tiepnhan trong wireframe.
+    /// Lễ tân: tìm kiếm BenhNhan, tạo PhieuKham mới từ LichHen.
+    /// </summary>
+    public partial class TiepNhanForm : Form
+    {
+        public TiepNhanForm()
+        {
+            InitializeComponent();
+        }
+    }
+}
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

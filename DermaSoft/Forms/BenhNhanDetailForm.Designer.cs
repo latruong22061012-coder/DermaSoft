@@ -13,6 +13,7 @@ namespace DermaSoft.Forms
 
         private void InitializeComponent()
         {
+<<<<<<< HEAD
             System.Windows.Forms.TreeNode treeNode1 = new System.Windows.Forms.TreeNode("PK#024 — 24/03");
             System.Windows.Forms.TreeNode treeNode2 = new System.Windows.Forms.TreeNode("PK#018 — 12/02");
             System.Windows.Forms.TreeNode treeNode3 = new System.Windows.Forms.TreeNode("PK#005 — 05/01");
@@ -951,3 +952,16 @@ namespace DermaSoft.Forms
         private System.Windows.Forms.DataGridViewTextBoxColumn colGC_GhiChu;
     }
 }
+=======
+            this.SuspendLayout();
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(1100, 760);
+            this.Name = "BenhNhanDetailForm";
+            this.Text = "Hồ Sơ Bệnh Nhân";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            this.ResumeLayout(false);
+        }
+    }
+}
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

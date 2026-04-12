@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 using System;
 using System.Data;
 using System.Drawing;
@@ -627,3 +628,17 @@ namespace DermaSoft.Forms
         private void pnlDetailButtons_Paint(object sender, PaintEventArgs e) { }
     }
 }
+=======
+using System.Windows.Forms;
+
+namespace DermaSoft.Forms
+{
+    public partial class PatientForm : Form
+    {
+        public PatientForm()
+        {
+            InitializeComponent();
+        }
+    }
+}
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

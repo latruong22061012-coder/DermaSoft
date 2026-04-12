@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 using System;
 using System.Data;
 using System.Data.SqlClient;
@@ -469,3 +470,17 @@ namespace DermaSoft.Forms
         }
     }
 }
+=======
+using System.Windows.Forms;
+
+namespace DermaSoft.Forms
+{
+    public partial class AppointmentForm : Form
+    {
+        public AppointmentForm()
+        {
+            InitializeComponent();
+        }
+    }
+}
+>>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
