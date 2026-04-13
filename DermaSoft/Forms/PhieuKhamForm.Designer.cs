@@ -13,7 +13,6 @@ namespace DermaSoft.Forms
 
         private void InitializeComponent()
         {
-<<<<<<< HEAD
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
@@ -1049,16 +1048,5 @@ namespace DermaSoft.Forms
         private System.Windows.Forms.DataGridViewTextBoxColumn colHSD;
         private System.Windows.Forms.DataGridViewButtonColumn colXoa;
         private System.Windows.Forms.Panel pnlDichVuList;
-=======
-            this.SuspendLayout();
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1100, 760);
-            this.Name = "PhieuKhamForm";
-            this.Text = "Phiếu Khám";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.ResumeLayout(false);
-        }
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
     }
 }

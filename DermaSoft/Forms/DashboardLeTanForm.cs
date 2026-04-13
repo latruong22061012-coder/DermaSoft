@@ -1,18 +1,13 @@
-<<<<<<< HEAD
 using System;
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
 using System.Windows.Forms;
 using DermaSoft.Data;
-=======
-using System.Windows.Forms;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
 namespace DermaSoft.Forms
 {
     /// <summary>
-<<<<<<< HEAD
     /// Dashboard dành riêng cho Lễ Tân.
     /// Hiển thị: 4 KPI cards + bảng lịch hẹn hôm nay + danh sách hóa đơn cần thu.
     /// Tất cả dữ liệu lấy trực tiếp từ SQL Server qua DatabaseConnection.
@@ -354,16 +349,3 @@ namespace DermaSoft.Forms
         }
     }
 }
-=======
-    /// Dashboard Lễ Tân — frm-dashboard-lt trong wireframe.
-    /// Hiển thị: queue bệnh nhân chờ, lịch hẹn hôm nay, hóa đơn cần thu.
-    /// </summary>
-    public partial class DashboardLeTanForm : Form
-    {
-        public DashboardLeTanForm()
-        {
-            InitializeComponent();
-        }
-    }
-}
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

@@ -13,7 +13,6 @@ namespace DermaSoft.Forms
 
         private void InitializeComponent()
         {
-<<<<<<< HEAD
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
@@ -939,16 +938,5 @@ namespace DermaSoft.Forms
         private Guna.UI2.WinForms.Guna2ComboBox cmbBacSi;
         private Guna.UI2.WinForms.Guna2GradientButton btnTiepNhan;
         private Guna.UI2.WinForms.Guna2Button btnHuy;
-=======
-            this.SuspendLayout();
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1100, 720);
-            this.Name = "TiepNhanForm";
-            this.Text = "Tiếp Nhận Bệnh Nhân";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.ResumeLayout(false);
-        }
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
     }
 }

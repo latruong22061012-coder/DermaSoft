@@ -1,18 +1,13 @@
-<<<<<<< HEAD
 using System;
 using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using DermaSoft.Data;
-=======
-using System.Windows.Forms;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
 namespace DermaSoft.Forms
 {
     public partial class MemberForm : Form
     {
-<<<<<<< HEAD
         // ══════════════════════════════════════════════════════════════════════
         // STATE
         // ══════════════════════════════════════════════════════════════════════
@@ -492,11 +487,3 @@ namespace DermaSoft.Forms
             => CboFilterHang_SelectedIndexChanged(sender, e);
     }
 }
-=======
-        public MemberForm()
-        {
-            InitializeComponent();
-        }
-    }
-}
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

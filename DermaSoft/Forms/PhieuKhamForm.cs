@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -8,14 +7,10 @@ using System.Windows.Forms;
 using DermaSoft.Data;
 using DermaSoft.Theme;
 using Guna.UI2.WinForms;
-=======
-using System.Windows.Forms;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
 namespace DermaSoft.Forms
 {
     /// <summary>
-<<<<<<< HEAD
     /// Form Phiếu Khám Bệnh — Bác sĩ nhập triệu chứng, chẩn đoán,
     /// chọn dịch vụ đã thực hiện và kê đơn thuốc (FEFO).
     /// Mở từ DashboardBacSiForm (nút Bắt Đầu Khám) với MaPhieuKham cụ thể.
@@ -2131,17 +2126,3 @@ namespace DermaSoft.Forms
         }
     }
 }
-=======
-    /// Form Phiếu Khám — frm-phieukham trong wireframe.
-    /// Bác sĩ: chẩn đoán, triệu chứng, dịch vụ (ChiTietDichVu), đơn thuốc (ChiTietDonThuoc).
-    /// Trạng thái: TrangThaiPhieuKham 0–4.
-    /// </summary>
-    public partial class PhieuKhamForm : Form
-    {
-        public PhieuKhamForm()
-        {
-            InitializeComponent();
-        }
-    }
-}
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
