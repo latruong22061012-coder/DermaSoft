@@ -39,11 +39,12 @@ SELECT
     t.TenThuoc,
     COUNT(*) OVER (PARTITION BY bn.MaBenhNhan) AS SoLanKham
 FROM BenhNhan bn
-LEFT JOIN PhieuKham pk ON bn.MaBenhNhan = pk.MaBenhNhan
+LEFT JOIN PhieuKham pk ON bn.MaBenhNhan = pk.MaBenhNhan AND pk.IsDeleted = 0
 LEFT JOIN ChiTietDichVu cdt ON pk.MaPhieuKham = cdt.MaPhieuKham
 LEFT JOIN DichVu dv ON cdt.MaDichVu = dv.MaDichVu
 LEFT JOIN ChiTietDonThuoc ctdt ON pk.MaPhieuKham = ctdt.MaPhieuKham
-LEFT JOIN Thuoc t ON ctdt.MaThuoc = t.MaThuoc;
+LEFT JOIN Thuoc t ON ctdt.MaThuoc = t.MaThuoc
+WHERE bn.IsDeleted = 0;
 GO
 
 -- ============================================================
@@ -134,7 +135,8 @@ SELECT
     nd.EmailVerifiedAt,
     nd.LastEmailVerificationAt
 FROM NguoiDung nd
-LEFT JOIN VaiTro vt ON nd.MaVaiTro = vt.MaVaiTro;
+LEFT JOIN VaiTro vt ON nd.MaVaiTro = vt.MaVaiTro
+WHERE nd.IsDeleted = 0;
 GO
 
 -- ============================================================

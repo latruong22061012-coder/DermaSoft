@@ -170,6 +170,10 @@
     <Compile Include="DermaSoft\Forms\ProfileForm.Designer.cs">
       <DependentUpon>ProfileForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="DermaSoft\Forms\QuanLyHoaDonForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\QuanLyHoaDonForm.Designer.cs" />
     <Compile Include="DermaSoft\Forms\ReportForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -212,6 +216,7 @@
     <Compile Include="DermaSoft\Forms\TonKhoForm.Designer.cs">
       <DependentUpon>TonKhoForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="DermaSoft\Helpers\DoubleBufferHelper.cs" />
     <Compile Include="DermaSoft\Models\AppointmentModel.cs" />
     <Compile Include="DermaSoft\Models\InvoiceModel.cs" />
     <Compile Include="DermaSoft\Models\MemberModel.cs" />
@@ -248,6 +253,12 @@
     <EmbeddedResource Include="DermaSoft\Forms\MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="DermaSoft\Forms\MainFormBacSi.resx">
+      <DependentUpon>MainFormBacSi.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DermaSoft\Forms\MainFormLeTan.resx">
+      <DependentUpon>MainFormLeTan.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="DermaSoft\Forms\MemberForm.resx">
       <DependentUpon>MemberForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -272,6 +283,7 @@
     </Compile>
     <None Include="DermaSoft\app.manifest" />
     <None Include="DermaSoft\Enums\README.md" />
+    <None Include="DermaSoft\TEST_PLAN.md" />
     <None Include="ENUM_SUMMARY_VI.md" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
@@ -294,8 +306,7 @@
     <Content Include="DermaSoft\Data\04_Views.sql" />
     <Content Include="DermaSoft\Data\05_Constraints.sql" />
     <Content Include="DermaSoft\Data\05_SeedTestData.sql" />
-    <Content Include="DermaSoft\Data\06_CaiDatHeThong.sql" />
-    <Content Include="DermaSoft\Data\MIGRATION_24_03_2026.sql" />
+    <Content Include="DermaSoft\Data\MIGRATION_APPLY_FIXES.sql" />
     <Content Include="ENUM_COMPLETION_REPORT.txt" />
     <None Include="Resources\logo.png" />
     <None Include="Resources\logo1.png" />

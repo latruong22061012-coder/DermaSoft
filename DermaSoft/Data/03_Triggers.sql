@@ -136,7 +136,7 @@ GO
 
 -- ============================================================
 -- TRIGGER 5: CẤP PHÁT ĐIỂM THƯỞNG KHI THANH TOÁN
--- Mục Đích: Tính điểm dựa trên tiền thanh toán (1 triệu = 1000 điểm)
+-- Mục Đích: Tính điểm dựa trên tổng tiền hóa đơn (1.000đ = 1 điểm)
 -- ============================================================
 PRINT 'Creating TRG_HoaDon_CapPhatDiem...'
 GO
@@ -145,16 +145,17 @@ ON HoaDon AFTER UPDATE
 AS 
 BEGIN
     SET NOCOUNT ON;
-    
+
+    -- Chỉ cộng điểm khi TrangThai chuyển sang 1 (Đã thanh toán)
+    -- Dùng TongTien (tổng hóa đơn thực tế) thay vì TienKhachTra (tiền khách đưa)
     UPDATE tvi
-    SET DiemTichLuy = DiemTichLuy + CAST(ROUND(i.TienKhachTra / 1000, 0) AS INT)
+    SET DiemTichLuy = DiemTichLuy + CAST(ROUND(i.TongTien / 1000, 0) AS INT)
     FROM ThanhVienInfo tvi
     INNER JOIN PhieuKham pk ON tvi.MaBenhNhan = pk.MaBenhNhan
     INNER JOIN inserted i ON pk.MaPhieuKham = i.MaPhieuKham
+    INNER JOIN deleted d ON i.MaHoaDon = d.MaHoaDon
     WHERE i.TrangThai = 1
-    AND i.MaHoaDon IN (SELECT inserted.MaHoaDon 
-                       FROM inserted 
-                       WHERE inserted.TrangThai = 1);
+      AND d.TrangThai = 0;   -- Chỉ khi chuyển từ 0→1, tránh cộng trùng
 END;
 GO
 

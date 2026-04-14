@@ -1,4 +1,4 @@
-namespace DermaSoft.Forms
+﻿namespace DermaSoft.Forms
 {
     partial class InvoiceForm
     {
@@ -10,7 +10,6 @@ namespace DermaSoft.Forms
         }
         private void InitializeComponent()
         {
-<<<<<<< HEAD
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
@@ -519,8 +518,8 @@ namespace DermaSoft.Forms
             this.tlpBNInfo.ColumnCount = 4;
             this.tlpBNInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
             this.tlpBNInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 20F));
-            this.tlpBNInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 20F));
-            this.tlpBNInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 35F));
+            this.tlpBNInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 28F));
+            this.tlpBNInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 27F));
             this.tlpBNInfo.Controls.Add(this.pnlChanDoan, 3, 0);
             this.tlpBNInfo.Controls.Add(this.pnlBacSi, 2, 0);
             this.tlpBNInfo.Controls.Add(this.pnlNgayKham, 1, 0);
@@ -539,9 +538,9 @@ namespace DermaSoft.Forms
             this.pnlChanDoan.Controls.Add(this.lblChanDoan);
             this.pnlChanDoan.Controls.Add(this.lblLabelCD);
             this.pnlChanDoan.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlChanDoan.Location = new System.Drawing.Point(412, 3);
+            this.pnlChanDoan.Location = new System.Drawing.Point(462, 3);
             this.pnlChanDoan.Name = "pnlChanDoan";
-            this.pnlChanDoan.Size = new System.Drawing.Size(216, 56);
+            this.pnlChanDoan.Size = new System.Drawing.Size(166, 56);
             this.pnlChanDoan.TabIndex = 3;
             this.pnlChanDoan.Paint += new System.Windows.Forms.PaintEventHandler(this.pnlChanDoan_Paint);
             // 
@@ -576,7 +575,7 @@ namespace DermaSoft.Forms
             this.pnlBacSi.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlBacSi.Location = new System.Drawing.Point(286, 3);
             this.pnlBacSi.Name = "pnlBacSi";
-            this.pnlBacSi.Size = new System.Drawing.Size(120, 56);
+            this.pnlBacSi.Size = new System.Drawing.Size(170, 56);
             this.pnlBacSi.TabIndex = 2;
             // 
             // lblBacSi
@@ -1637,16 +1636,5 @@ namespace DermaSoft.Forms
         private System.Windows.Forms.Label label5;
         private Guna.UI2.WinForms.Guna2Separator guna2Separator2;
         private System.Windows.Forms.Label lblPreviewTongLabel;
-=======
-            this.components = new System.ComponentModel.Container();
-            this.SuspendLayout();
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1060, 768);
-            this.Name = "InvoiceForm";
-            this.Text = "Quản lý hóa đơn";
-            this.ResumeLayout(false);
-        }
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
     }
 }

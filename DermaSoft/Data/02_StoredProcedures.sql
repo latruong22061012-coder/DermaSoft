@@ -453,11 +453,11 @@ BEGIN
             SET @MaBenhNhan = SCOPE_IDENTITY();
         END;
 
-        -- Kiểm tra trùng lịch cùng ngày (TrangThai 1=chờ, 2=xác nhận)
+        -- Kiểm tra trùng lịch cùng ngày (TrangThai 0=Chờ XN, 1=Đã XN)
         IF EXISTS (
             SELECT 1 FROM LichHen
             WHERE  MaBenhNhan = @MaBenhNhan
-              AND  TrangThai IN (1, 2)
+              AND  TrangThai IN (0, 1)
               AND  CAST(ThoiGianHen AS DATE) = CAST(@ThoiGianHen AS DATE)
         )
         BEGIN
@@ -467,7 +467,7 @@ BEGIN
 
         -- Ghi lịch hẹn mới (MaNguoiDung = NULL → chờ lễ tân phân công)
         INSERT INTO LichHen (MaBenhNhan, MaNguoiDung, ThoiGianHen, GhiChu, TrangThai, SoDienThoaiKhach)
-        VALUES (@MaBenhNhan, NULL, @ThoiGianHen, @GhiChu, 1, @SoDienThoai);
+        VALUES (@MaBenhNhan, NULL, @ThoiGianHen, @GhiChu, 0, @SoDienThoai);
 
         DECLARE @MaLichHen INT = SCOPE_IDENTITY();
 

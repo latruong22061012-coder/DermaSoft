@@ -193,12 +193,127 @@ PRINT 'Bước 5: Xong.'
 GO
 
 -- ═══════════════════════════════════════
+-- BƯỚC 6: Thêm PhieuKham TrangThai = 2 (Hoàn thành, CHƯA thanh toán)
+--         → Để InvoiceForm có dữ liệu test
+-- ═══════════════════════════════════════
+PRINT 'Bước 6: Thêm PhieuKham chưa thanh toán cho InvoiceForm...'
+
+DECLARE @BacSi6 INT = (SELECT TOP 1 MaNguoiDung FROM NguoiDung WHERE MaVaiTro = 2 AND IsDeleted = 0);
+IF @BacSi6 IS NULL SET @BacSi6 = (SELECT TOP 1 MaNguoiDung FROM NguoiDung WHERE IsDeleted = 0);
+
+DECLARE @BN6_1 INT = (SELECT TOP 1 MaBenhNhan FROM BenhNhan WHERE SoDienThoai = '0901000001');
+DECLARE @BN6_2 INT = (SELECT TOP 1 MaBenhNhan FROM BenhNhan WHERE SoDienThoai = '0901000003');
+DECLARE @BN6_3 INT = (SELECT TOP 1 MaBenhNhan FROM BenhNhan WHERE SoDienThoai = '0901000005');
+
+-- Phiếu khám Hoàn thành (TrangThai = 2) — chưa có hóa đơn
+INSERT INTO PhieuKham (MaBenhNhan, MaNguoiDung, NgayKham, TrieuChung, ChanDoan, TrangThai)
+VALUES 
+(@BN6_1, @BacSi6, GETDATE(), N'Da ngứa vùng cổ tay',       N'Viêm da dị ứng',      2),
+(@BN6_2, @BacSi6, GETDATE(), N'Mụn bọc vùng trán',         N'Acne nặng độ III',     2),
+(@BN6_3, @BacSi6, GETDATE(), N'Vết thâm sau mụn',          N'Post-acne pigment',    2);
+
+-- Thêm chi tiết dịch vụ cho các phiếu khám mới
+DECLARE @DV6 INT = (SELECT TOP 1 MaDichVu FROM DichVu);
+DECLARE @GiaDV6 DECIMAL(18,2) = (SELECT DonGia FROM DichVu WHERE MaDichVu = @DV6);
+
+IF @DV6 IS NOT NULL
+BEGIN
+    DECLARE @PKNew TABLE (ID INT IDENTITY, MaPK INT);
+    INSERT INTO @PKNew
+    SELECT MaPhieuKham FROM PhieuKham
+    WHERE TrangThai = 2 AND IsDeleted = 0
+      AND MaPhieuKham NOT IN (SELECT MaPhieuKham FROM ChiTietDichVu)
+    ORDER BY MaPhieuKham DESC;
+
+    DECLARE @i6 INT = 1;
+    DECLARE @max6 INT = (SELECT COUNT(*) FROM @PKNew);
+    WHILE @i6 <= @max6
+    BEGIN
+        DECLARE @pk6 INT = (SELECT MaPK FROM @PKNew WHERE ID = @i6);
+        INSERT INTO ChiTietDichVu (MaPhieuKham, MaDichVu, SoLuong, ThanhTien)
+        VALUES (@pk6, @DV6, 1, @GiaDV6);
+        SET @i6 = @i6 + 1;
+    END
+END
+
+-- Thêm chi tiết đơn thuốc cho các phiếu khám mới
+DECLARE @Thuoc6 INT = (SELECT TOP 1 MaThuoc FROM Thuoc WHERE SoLuongTon > 0);
+
+IF @Thuoc6 IS NOT NULL
+BEGIN
+    DECLARE @PKNew2 TABLE (ID INT IDENTITY, MaPK INT);
+    INSERT INTO @PKNew2
+    SELECT MaPhieuKham FROM PhieuKham
+    WHERE TrangThai = 2 AND IsDeleted = 0
+      AND MaPhieuKham NOT IN (SELECT MaPhieuKham FROM ChiTietDonThuoc)
+    ORDER BY MaPhieuKham DESC;
+
+    DECLARE @i6b INT = 1;
+    DECLARE @max6b INT = (SELECT COUNT(*) FROM @PKNew2);
+    WHILE @i6b <= @max6b
+    BEGIN
+        DECLARE @pk6b INT = (SELECT MaPK FROM @PKNew2 WHERE ID = @i6b);
+        INSERT INTO ChiTietDonThuoc (MaPhieuKham, MaThuoc, SoLuong, LieuDung)
+        VALUES (@pk6b, @Thuoc6, 2, N'Ngày 2 lần sau ăn');
+        SET @i6b = @i6b + 1;
+    END
+END
+
+PRINT 'Bước 6: Xong.'
+GO
+
+-- ═══════════════════════════════════════
+-- BƯỚC 7: Thêm LichHen + PhieuKham hôm nay cho TiepNhanForm
+-- ═══════════════════════════════════════
+PRINT 'Bước 7: Thêm LichHen + PhieuKham hôm nay cho TiepNhanForm...'
+
+DECLARE @BacSi7 INT = (SELECT TOP 1 MaNguoiDung FROM NguoiDung WHERE MaVaiTro = 2 AND IsDeleted = 0);
+IF @BacSi7 IS NULL SET @BacSi7 = (SELECT TOP 1 MaNguoiDung FROM NguoiDung WHERE IsDeleted = 0);
+
+DECLARE @BN7_1 INT = (SELECT TOP 1 MaBenhNhan FROM BenhNhan WHERE SoDienThoai = '0901000001');
+DECLARE @BN7_2 INT = (SELECT TOP 1 MaBenhNhan FROM BenhNhan WHERE SoDienThoai = '0901000002');
+DECLARE @BN7_3 INT = (SELECT TOP 1 MaBenhNhan FROM BenhNhan WHERE SoDienThoai = '0901000004');
+
+-- Lịch hẹn hôm nay (TrangThai 0 = Chờ XN, 1 = Đã XN)
+IF NOT EXISTS (SELECT 1 FROM LichHen WHERE CAST(ThoiGianHen AS DATE) = CAST(GETDATE() AS DATE) AND TrangThai IN (0,1))
+BEGIN
+    INSERT INTO LichHen (MaBenhNhan, MaNguoiDung, ThoiGianHen, TrangThai, GhiChu)
+    VALUES
+    (@BN7_1, @BacSi7, CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '09:00:00', 1, N'Tái khám viêm da'),
+    (@BN7_2, @BacSi7, CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '10:00:00', 0, N'Khám mụn'),
+    (@BN7_3, @BacSi7, CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '14:00:00', 0, N'Khám dị ứng mỹ phẩm');
+
+    PRINT '  → Đã thêm 3 lịch hẹn hôm nay.'
+END
+ELSE
+    PRINT '  → Đã có lịch hẹn hôm nay — bỏ qua.'
+
+-- Phiếu khám hôm nay TrangThai = 0 (Chờ khám) để queue hiện dữ liệu
+IF NOT EXISTS (SELECT 1 FROM PhieuKham WHERE CAST(NgayKham AS DATE) = CAST(GETDATE() AS DATE) AND TrangThai IN (0,1) AND IsDeleted = 0)
+BEGIN
+    INSERT INTO PhieuKham (MaBenhNhan, MaNguoiDung, NgayKham, TrieuChung, TrangThai)
+    VALUES
+    (@BN7_1, @BacSi7, GETDATE(), N'Tái khám viêm da tiếp xúc', 0),
+    (@BN7_2, @BacSi7, GETDATE(), N'Mụn trứng cá vùng trán', 0);
+
+    PRINT '  → Đã thêm 2 phiếu khám chờ khám hôm nay.'
+END
+ELSE
+    PRINT '  → Đã có phiếu khám hôm nay — bỏ qua.'
+
+PRINT 'Bước 7: Xong.'
+GO
+
+-- ═══════════════════════════════════════
 -- KIỂM TRA KẾT QUẢ
 -- ═══════════════════════════════════════
 PRINT '========== KẾT QUẢ =========='
 
 SELECT 'BenhNhan' AS Bang, COUNT(*) AS SoBanGhi FROM BenhNhan;
 SELECT 'PhieuKham' AS Bang, COUNT(*) AS SoBanGhi FROM PhieuKham WHERE IsDeleted = 0;
+SELECT 'PhieuKham_ChuaTT' AS Bang, COUNT(*) AS SoBanGhi FROM PhieuKham WHERE TrangThai = 2 AND IsDeleted = 0;
+SELECT 'PhieuKham_ChoKham' AS Bang, COUNT(*) AS SoBanGhi FROM PhieuKham WHERE TrangThai IN (0,1) AND CAST(NgayKham AS DATE) = CAST(GETDATE() AS DATE) AND IsDeleted = 0;
+SELECT 'LichHen_HomNay' AS Bang, COUNT(*) AS SoBanGhi FROM LichHen WHERE CAST(ThoiGianHen AS DATE) = CAST(GETDATE() AS DATE) AND TrangThai IN (0,1);
 SELECT 'ChiTietDichVu' AS Bang, COUNT(*) AS SoBanGhi FROM ChiTietDichVu;
 SELECT 'ChiTietDonThuoc' AS Bang, COUNT(*) AS SoBanGhi FROM ChiTietDonThuoc;
 SELECT 'HoaDon' AS Bang, COUNT(*) AS SoBanGhi FROM HoaDon WHERE IsDeleted = 0;

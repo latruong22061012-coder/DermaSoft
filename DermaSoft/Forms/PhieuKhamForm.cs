@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
@@ -8,14 +7,10 @@ using System.Windows.Forms;
 using DermaSoft.Data;
 using DermaSoft.Theme;
 using Guna.UI2.WinForms;
-=======
-using System.Windows.Forms;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
 namespace DermaSoft.Forms
 {
     /// <summary>
-<<<<<<< HEAD
     /// Form Phiếu Khám Bệnh — Bác sĩ nhập triệu chứng, chẩn đoán,
     /// chọn dịch vụ đã thực hiện và kê đơn thuốc (FEFO).
     /// Mở từ DashboardBacSiForm (nút Bắt Đầu Khám) với MaPhieuKham cụ thể.
@@ -26,6 +21,10 @@ namespace DermaSoft.Forms
         private int _maPhieuKham = -1;
         private int _maBacSi = -1;
         private int _maLichHen = -1;  // Dùng để UPDATE LichHen.TrangThai=2 khi hoàn thành khám
+
+        /// <summary>True nếu đang khám (có MaPhieuKham hợp lệ, chưa hoàn thành).</summary>
+        internal bool DangKham => _maPhieuKham > 0 && !_daHoanThanh;
+        private bool _daHoanThanh = false;
 
         // Danh sách checkbox dịch vụ (tạo động trong pnlDichVuList)
         private readonly List<CheckBox> _dsDichVuChk = new List<CheckBox>();
@@ -151,13 +150,24 @@ namespace DermaSoft.Forms
                             + N' (' + FORMAT(pk.NgayKham, 'HH:mm dd/MM') + N')'  AS TenHienThi
                     FROM PhieuKham pk
                     JOIN BenhNhan  bn ON pk.MaBenhNhan = bn.MaBenhNhan
+                    LEFT JOIN LichHen lh ON pk.MaLichHen = lh.MaLichHen
                     WHERE pk.MaNguoiDung = @MaBS
+                      AND CAST(pk.NgayKham AS DATE) = CAST(GETDATE() AS DATE)
                       AND pk.TrangThai   IN (0, 1)
                       AND pk.IsDeleted   = 0
+                      AND (pk.MaLichHen IS NULL OR lh.TrangThai <> 3)
                     ORDER BY pk.NgayKham DESC";
 
                 DataTable dt = DatabaseConnection.ExecuteQuery(sql,
                     p => p.AddWithValue("@MaBS", _maBacSi));
+
+                // Xóa thông tin BN mặc định — chưa chọn phiếu thì không hiện BN nào
+                lblAvatar.Text = "?";
+                lblTenBN.Text = "Chọn phiếu khám bên dưới";
+                lblThongTinBN.Text = "—";
+                lblDiUng.Text = "";
+                txtTrieuChung.Text = "";
+                txtChanDoan.Text = "";
 
                 if (dt == null || dt.Rows.Count == 0)
                 {
@@ -168,6 +178,12 @@ namespace DermaSoft.Forms
                     btnLuuNhap.Enabled = false;
                     return;
                 }
+
+                // Thêm dòng placeholder đầu tiên
+                DataRow rPlaceholder = dt.NewRow();
+                rPlaceholder["MaPhieuKham"] = -1;
+                rPlaceholder["TenHienThi"] = "-- Chọn phiếu khám --";
+                dt.Rows.InsertAt(rPlaceholder, 0);
 
                 // Tạo ComboBox chọn phiếu khám overlay trên pnlContent
                 var cboChon = new Guna2ComboBox
@@ -199,7 +215,9 @@ namespace DermaSoft.Forms
                 btnChon.Click += (s, e2) =>
                 {
                     if (cboChon.SelectedValue == null) return;
-                    _maPhieuKham = Convert.ToInt32(cboChon.SelectedValue);
+                    int maPK = Convert.ToInt32(cboChon.SelectedValue);
+                    if (maPK <= 0) return; // Placeholder "-- Chọn phiếu khám --"
+                    _maPhieuKham = maPK;
 
                     // Xóa selector
                     pnlContent.Controls.Remove(cboChon);
@@ -513,7 +531,7 @@ namespace DermaSoft.Forms
         {
             try
             {
-                // Lấy lô ưu tiên nhất của mỗi loại thuốc (UuTienFEFO = 1 = hết hạn sớm nhất)
+                // Lấy tất cả thuốc còn tồn kho (SoLuongConLai > 0), ưu tiên lô FEFO lên đầu
                 const string sql = @"
                     SELECT
                         MaThuoc,
@@ -524,8 +542,8 @@ namespace DermaSoft.Forms
                         SoLuongConLai,
                         MaPhieuNhap
                     FROM VW_TonKhoTheoLo
-                    WHERE UuTienFEFO = 1
-                    ORDER BY TenThuoc";
+                    WHERE SoLuongConLai > 0
+                    ORDER BY TenThuoc, UuTienFEFO ASC, HanSuDung ASC";
 
                 DataTable dt = DatabaseConnection.ExecuteQuery(sql);
 
@@ -745,6 +763,22 @@ namespace DermaSoft.Forms
 
         private void BtnHoanThanhKham_Click(object sender, EventArgs e)
         {
+            // Kiểm tra lịch hẹn liên kết có bị hủy không
+            if (_maLichHen > 0)
+            {
+                DataTable dtLH = DatabaseConnection.ExecuteQuery(
+                    "SELECT TrangThai FROM LichHen WHERE MaLichHen = @MaLH",
+                    p => p.AddWithValue("@MaLH", _maLichHen));
+                if (dtLH != null && dtLH.Rows.Count > 0
+                    && Convert.ToInt32(dtLH.Rows[0]["TrangThai"]) == 3)
+                {
+                    MessageBox.Show(
+                        "Lịch hẹn liên kết với phiếu khám này đã bị hủy.\nKhông thể hoàn thành khám.",
+                        "Lịch hẹn đã hủy", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+
             if (string.IsNullOrWhiteSpace(txtTrieuChung.Text))
             {
                 MessageBox.Show("Vui lòng nhập triệu chứng trước khi hoàn thành.",
@@ -819,8 +853,6 @@ namespace DermaSoft.Forms
                     }
 
                     // 2. Nếu hoàn thành khám → cập nhật LichHen về TrangThai=2 (Hoàn thành)
-                    // Chỉ UPDATE nếu phiếu khám này có liên kết LichHen
-                    // và lịch chưa bị Hủy (TrangThai=3)
                     if (trangThai == 2 && _maLichHen > 0)
                     {
                         using (var cmdLH = new System.Data.SqlClient.SqlCommand(@"
@@ -831,6 +863,63 @@ namespace DermaSoft.Forms
                         {
                             cmdLH.Parameters.AddWithValue("@MaLH", _maLichHen);
                             cmdLH.ExecuteNonQuery();
+                        }
+                    }
+
+                    // 3. Nếu hoàn thành khám → tạo HoaDon chờ thanh toán (TrangThai=0)
+                    //    để Dashboard Lễ Tân hiển thị "Hóa đơn cần thu"
+                    if (trangThai == 2)
+                    {
+                        // Kiểm tra chưa có HoaDon cho phiếu này
+                        using (var cmdCk = new System.Data.SqlClient.SqlCommand(@"
+                            SELECT COUNT(*) FROM HoaDon
+                            WHERE MaPhieuKham = @MaPK AND IsDeleted = 0", conn, tran))
+                        {
+                            cmdCk.Parameters.AddWithValue("@MaPK", _maPhieuKham);
+                            int daCoHD = Convert.ToInt32(cmdCk.ExecuteScalar());
+
+                            if (daCoHD == 0)
+                            {
+                                // Tính tổng tiền dịch vụ
+                                decimal tongDV = 0;
+                                using (var cmdDV = new System.Data.SqlClient.SqlCommand(@"
+                                    SELECT ISNULL(SUM(ThanhTien), 0) FROM ChiTietDichVu
+                                    WHERE MaPhieuKham = @MaPK", conn, tran))
+                                {
+                                    cmdDV.Parameters.AddWithValue("@MaPK", _maPhieuKham);
+                                    tongDV = Convert.ToDecimal(cmdDV.ExecuteScalar());
+                                }
+
+                                // Tính tổng tiền thuốc
+                                decimal tongThuoc = 0;
+                                using (var cmdTh = new System.Data.SqlClient.SqlCommand(@"
+                                    SELECT ISNULL(SUM(cdt.SoLuong * t.DonGia), 0)
+                                    FROM ChiTietDonThuoc cdt
+                                    JOIN Thuoc t ON cdt.MaThuoc = t.MaThuoc
+                                    WHERE cdt.MaPhieuKham = @MaPK", conn, tran))
+                                {
+                                    cmdTh.Parameters.AddWithValue("@MaPK", _maPhieuKham);
+                                    tongThuoc = Convert.ToDecimal(cmdTh.ExecuteScalar());
+                                }
+
+                                decimal tongTien = tongDV + tongThuoc;
+
+                                // INSERT HoaDon chờ thanh toán
+                                using (var cmdHD = new System.Data.SqlClient.SqlCommand(@"
+                                    INSERT INTO HoaDon
+                                        (MaPhieuKham, TongTien, TongTienDichVu, TongThuoc,
+                                         GiamGia, TienKhachTra, TienThua, TrangThai)
+                                    VALUES
+                                        (@MaPK, @TongTien, @TongDV, @TongThuoc,
+                                         0, 0, 0, 0)", conn, tran))
+                                {
+                                    cmdHD.Parameters.AddWithValue("@MaPK", _maPhieuKham);
+                                    cmdHD.Parameters.AddWithValue("@TongTien", tongTien);
+                                    cmdHD.Parameters.AddWithValue("@TongDV", tongDV);
+                                    cmdHD.Parameters.AddWithValue("@TongThuoc", tongThuoc);
+                                    cmdHD.ExecuteNonQuery();
+                                }
+                            }
                         }
                     }
                 });
@@ -844,6 +933,7 @@ namespace DermaSoft.Forms
 
                 if (trangThai == 2)
                 {
+                    _daHoanThanh = true;
                     MessageBox.Show(
                         "✅ Hoàn thành khám thành công!\n\nLễ tân có thể tiến hành thu tiền tại InvoiceForm.",
                         "Hoàn Thành", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1255,7 +1345,9 @@ namespace DermaSoft.Forms
                        TenThuoc + N'  —  HSD: ' + FORMAT(HanSuDung,'MM/yyyy')
                        + N'  (' + CAST(SoLuongConLai AS NVARCHAR) + N' còn)' AS TenHienThi,
                        HanSuDung, SoLuongConLai
-                FROM VW_TonKhoTheoLo WHERE UuTienFEFO=1 ORDER BY TenThuoc");
+                FROM VW_TonKhoTheoLo
+                WHERE SoLuongConLai > 0
+                ORDER BY TenThuoc, UuTienFEFO ASC, HanSuDung ASC");
             cboThuoc2.DataSource = dtThuocFEFO;
             cboThuoc2.DisplayMember = "TenHienThi";
             cboThuoc2.ValueMember = "MaThuoc";
@@ -2131,17 +2223,3 @@ namespace DermaSoft.Forms
         }
     }
 }
-=======
-    /// Form Phiếu Khám — frm-phieukham trong wireframe.
-    /// Bác sĩ: chẩn đoán, triệu chứng, dịch vụ (ChiTietDichVu), đơn thuốc (ChiTietDonThuoc).
-    /// Trạng thái: TrangThaiPhieuKham 0–4.
-    /// </summary>
-    public partial class PhieuKhamForm : Form
-    {
-        public PhieuKhamForm()
-        {
-            InitializeComponent();
-        }
-    }
-}
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

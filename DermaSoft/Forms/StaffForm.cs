@@ -30,6 +30,7 @@ namespace DermaSoft.Forms
         private Guna2Button btnTaoTK;
         private Guna2Button btnResetMK;
         private Guna2Button btnKhoaTK;
+        private Guna2Button btnXoaNV;
         private Label lblFormTitle;
         private Label lblError;
         private int _maNVDangChon = -1;
@@ -575,6 +576,26 @@ namespace DermaSoft.Forms
             };
             btnKhoaTK.Click += BtnKhoaTK_Click;
             pnlCard.Controls.Add(btnKhoaTK);
+            y += 42;
+
+            // ── Nút Xóa Nhân Viên (soft delete) ──
+            btnXoaNV = new Guna2Button
+            {
+                Text = "🗑️ Xóa Nhân Viên",
+                Font = AppFonts.BodyBold,
+                ForeColor = BadgeDangerFg,
+                FillColor = BadgeDangerBg,
+                BorderColor = ColorScheme.Danger,
+                BorderThickness = 1,
+                BorderRadius = 20,
+                Location = new Point(X, y),
+                Size = new Size(W, 34),
+                Cursor = Cursors.Hand,
+                Enabled = false,
+                DisabledState = { FillColor = Color.FromArgb(240, 240, 240), ForeColor = Color.FromArgb(180, 180, 180), BorderColor = Color.FromArgb(200, 200, 200) },
+            };
+            btnXoaNV.Click += BtnXoaNV_Click;
+            pnlCard.Controls.Add(btnXoaNV);
         }
 
         // ══════════════════════════════════════════
@@ -769,6 +790,7 @@ namespace DermaSoft.Forms
                             btnTaoTK.Text = "💾  Cập Nhật";
                             btnResetMK.Enabled = true;
                             btnKhoaTK.Enabled = true;
+                            btnXoaNV.Enabled = true;
                             btnKhoaTK.Text = active ? "🚫  Khóa Tài Khoản" : "🔓  Mở Khóa";
                             btnKhoaTK.FillColor = active ? ColorScheme.Danger : ColorScheme.Info;
                             lblError.Text = "";
@@ -794,6 +816,7 @@ namespace DermaSoft.Forms
             btnKhoaTK.Enabled = false;
             btnKhoaTK.Text = "🚫  Khóa Tài Khoản";
             btnKhoaTK.FillColor = ColorScheme.Danger;
+            btnXoaNV.Enabled = false;
             lblError.Text = "";
             txtHoTen.Focus();
         }
@@ -829,6 +852,8 @@ namespace DermaSoft.Forms
                             lblError.Text = "Tên đăng nhập phải đúng 5 ký tự.";
                             return;
                         }
+                        // Hash mật khẩu bằng BCrypt trước khi lưu vào DB
+                        string matKhauHash = BCrypt.Net.BCrypt.HashPassword(matKhau, workFactor: 10);
                         using (var cmd = new SqlCommand("SP_TaoTaiKhoanNguoiDung", conn))
                         {
                             cmd.CommandType = CommandType.StoredProcedure;
@@ -836,7 +861,7 @@ namespace DermaSoft.Forms
                             cmd.Parameters.AddWithValue("@SoDienThoai", sdt);
                             cmd.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(email) ? (object)DBNull.Value : email);
                             cmd.Parameters.AddWithValue("@TenDangNhap", tenDN);
-                            cmd.Parameters.AddWithValue("@MatKhau", matKhau);
+                            cmd.Parameters.AddWithValue("@MatKhau", matKhauHash);
                             cmd.Parameters.AddWithValue("@MaVaiTro", maVaiTro);
                             cmd.ExecuteNonQuery();
                         }
@@ -844,14 +869,23 @@ namespace DermaSoft.Forms
                     }
                     else
                     {
-                        // CẬP NHẬT
-                        using (var cmd = new SqlCommand(
-                            @"UPDATE NguoiDung 
+                        // CẬP NHẬT — build SQL động: luôn cập nhật HoTen, SĐT, Email, VaiTro
+                        // + TenDangNhap nếu có nhập + MatKhau nếu có nhập mới
+                        string sqlUpdate = @"UPDATE NguoiDung 
                               SET HoTen = @HoTen, 
                                   SoDienThoai = @SoDienThoai, 
                                   Email = @Email,
-                                  MaVaiTro = @MaVaiTro
-                              WHERE MaNguoiDung = @MaNguoiDung", conn))
+                                  MaVaiTro = @MaVaiTro";
+
+                        if (!string.IsNullOrEmpty(tenDN))
+                            sqlUpdate += ", TenDangNhap = @TenDangNhap";
+
+                        if (!string.IsNullOrEmpty(matKhau))
+                            sqlUpdate += ", MatKhau = @MatKhau";
+
+                        sqlUpdate += " WHERE MaNguoiDung = @MaNguoiDung";
+
+                        using (var cmd = new SqlCommand(sqlUpdate, conn))
                         {
                             cmd.Parameters.AddWithValue("@MaNguoiDung", _maNVDangChon);
                             cmd.Parameters.AddWithValue("@HoTen", hoTen);
@@ -859,6 +893,16 @@ namespace DermaSoft.Forms
                             cmd.Parameters.Add("@Email", SqlDbType.VarChar, 100).Value =
                                 string.IsNullOrEmpty(email) ? (object)DBNull.Value : email;
                             cmd.Parameters.AddWithValue("@MaVaiTro", maVaiTro);
+
+                            if (!string.IsNullOrEmpty(tenDN))
+                                cmd.Parameters.AddWithValue("@TenDangNhap", tenDN);
+
+                            if (!string.IsNullOrEmpty(matKhau))
+                            {
+                                string matKhauHash = BCrypt.Net.BCrypt.HashPassword(matKhau, workFactor: 10);
+                                cmd.Parameters.AddWithValue("@MatKhau", matKhauHash);
+                            }
+
                             int rows = cmd.ExecuteNonQuery();
                             if (rows == 0)
                             {
@@ -887,11 +931,13 @@ namespace DermaSoft.Forms
 
             try
             {
+                // Hash mật khẩu mặc định bằng BCrypt trước khi lưu vào DB
+                string mkHash = BCrypt.Net.BCrypt.HashPassword(AppSettings.MatKhauMacDinh, workFactor: 10);
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(
                     "UPDATE NguoiDung SET MatKhau = @MK, DoiMatKhau = 1 WHERE MaNguoiDung = @Ma", conn))
                 {
-                    cmd.Parameters.AddWithValue("@MK", AppSettings.MatKhauMacDinh);
+                    cmd.Parameters.AddWithValue("@MK", mkHash);
                     cmd.Parameters.AddWithValue("@Ma", _maNVDangChon);
                     cmd.ExecuteNonQuery();
                 }
@@ -947,6 +993,45 @@ namespace DermaSoft.Forms
                     cmd.Parameters.AddWithValue("@MaNguoiDung", maNV);
                     cmd.ExecuteNonQuery();
                 }
+                ResetForm();
+                LoadDanhSach();
+            }
+            catch (SqlException ex) { MessageBox.Show(ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        }
+
+        // ══════════════════════════════════════════
+        // XÓA NHÂN VIÊN (SOFT DELETE)
+        // ══════════════════════════════════════════
+
+        private void BtnXoaNV_Click(object sender, EventArgs e)
+        {
+            if (_maNVDangChon == -1) return;
+
+            // Không cho xóa chính mình
+            var currentUser = LoginForm.NguoiDungHienTai;
+            if (currentUser != null && currentUser.MaNguoiDung == _maNVDangChon)
+            {
+                MessageBox.Show("Không thể xóa tài khoản đang đăng nhập!",
+                    "Không được phép", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Xóa nhân viên \"{txtHoTen.Text}\"?\n\nNhân viên sẽ bị ẩn khỏi hệ thống (có thể khôi phục từ DB).",
+                "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (result != DialogResult.Yes) return;
+
+            try
+            {
+                using (var conn = DatabaseConnection.GetConnection())
+                using (var cmd = new SqlCommand(
+                    "UPDATE NguoiDung SET IsDeleted = 1, TrangThaiTK = 0 WHERE MaNguoiDung = @Ma", conn))
+                {
+                    cmd.Parameters.AddWithValue("@Ma", _maNVDangChon);
+                    cmd.ExecuteNonQuery();
+                }
+                MessageBox.Show("Đã xóa nhân viên thành công!", "Thành công",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ResetForm();
                 LoadDanhSach();
             }

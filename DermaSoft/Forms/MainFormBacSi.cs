@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using DermaSoft.Data;
+using DermaSoft.Helpers;
 using DermaSoft.Theme;
 using Guna.UI2.WinForms;
 
@@ -13,6 +14,20 @@ namespace DermaSoft.Forms
     {
         private Guna2Button _menuHienTai = null;
 
+        /// <summary>Cờ đánh dấu đang đăng xuất (true) hay đóng ứng dụng (false).</summary>
+        internal bool DangXuat { get; private set; } = false;
+
+        // Bật WS_EX_COMPOSITED: OS tự composite toàn bộ cửa sổ → loại bỏ flicker
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
+                return cp;
+            }
+        }
+
         public MainFormBacSi()
         {
             InitializeComponent();
@@ -21,6 +36,8 @@ namespace DermaSoft.Forms
                 System.ComponentModel.LicenseManager.UsageMode ==
                 System.ComponentModel.LicenseUsageMode.Designtime)
                 return;
+
+            DoubleBufferHelper.BatDoubleBuffered(pnlMdiArea);
 
             CaiDatThongTinNguoiDung();
             TaoMenuSidebar();
@@ -157,22 +174,77 @@ namespace DermaSoft.Forms
             _menuHienTai = new Guna2Button { Parent = pnl, Visible = false, Tag = pnl.Tag };
 
             string tenMenu = pnl.Tag?.ToString() ?? "";
-            lblTopbarTitle.Text = tenMenu;
             lblBreadcrumb.Text = "DermaSoft › " + tenMenu;
-            lblTopbarTitle.Location = new Point(lblBreadcrumb.Right + 10, lblTopbarTitle.Location.Y);
+            lblTopbarTitle.Text = tenMenu;
+            // Đặt title sau breadcrumb, đảm bảo không đè chữ
+            lblTopbarTitle.Location = new Point(lblBreadcrumb.Left + lblBreadcrumb.PreferredWidth + 16, lblTopbarTitle.Location.Y);
 
             MoFormCon(tenMenu);
         }
 
         private void HienThiMdiMacDinh() => MoFormCon("Dashboard");
 
+        /// <summary>
+        /// Chuyển sidebar + topbar sang menu chỉ định (gọi từ form con khi điều hướng).
+        /// </summary>
+        internal void ChuyenMenu(string tenMenu)
+        {
+            // Tìm panel sidebar có Tag khớp tenMenu
+            foreach (Control ctrl in pnlSidebarNav.Controls)
+            {
+                if (ctrl is Panel pnl && pnl.Tag?.ToString() == tenMenu)
+                {
+                    Panel borderLeft = null;
+                    Label lbl = null;
+                    foreach (Control c in pnl.Controls)
+                    {
+                        if (c is Panel p && p.Width == 3) borderLeft = p;
+                        if (c is Label l) lbl = l;
+                    }
+                    if (borderLeft != null && lbl != null)
+                    {
+                        MenuItem_Click(pnl, borderLeft, lbl);
+                        return;
+                    }
+                }
+            }
+
+            // Fallback: chỉ cập nhật topbar
+            lblTopbarTitle.Text = tenMenu;
+            lblBreadcrumb.Text = "DermaSoft › " + tenMenu;
+            MoFormCon(tenMenu);
+        }
+
         private void MoFormCon(string tenMenu)
         {
-            pnlMdiArea.Controls.Clear();
+            // Kiểm tra nếu đang mở PhieuKhamForm (đang khám) → cảnh báo trước khi chuyển
+            foreach (Control c in pnlMdiArea.Controls)
+            {
+                if (c is PhieuKhamForm pkf && pkf.DangKham)
+                {
+                    var confirm = MessageBox.Show(
+                        "Bạn đang trong phiên khám. Chuyển sang form khác sẽ đóng phiếu khám hiện tại.\n\n" +
+                        "Lưu ý: Phiếu khám vẫn giữ trạng thái \"Đang khám\" — bạn có thể mở lại sau.\n\n" +
+                        "Bạn có muốn tiếp tục?",
+                        "Đang khám bệnh nhân",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+                    if (confirm != DialogResult.Yes) return;
+                    break;
+                }
+            }
 
             if (tenMenu == "Hồ Sơ Bệnh Nhân")
             {
+                pnlMdiArea.SuspendLayout();
+                while (pnlMdiArea.Controls.Count > 0)
+                {
+                    var old = pnlMdiArea.Controls[0];
+                    pnlMdiArea.Controls.RemoveAt(0);
+                    old.Dispose();
+                }
                 HienPanelTimKiemBenhNhan();
+                pnlMdiArea.ResumeLayout(true);
                 return;
             }
 
@@ -184,14 +256,7 @@ namespace DermaSoft.Forms
                 case "Hồ Sơ Cá Nhân": frm = new ProfileForm(); break;
             }
 
-            if (frm != null)
-            {
-                frm.TopLevel = false;
-                frm.FormBorderStyle = FormBorderStyle.None;
-                frm.Dock = DockStyle.Fill;
-                pnlMdiArea.Controls.Add(frm);
-                frm.Show();
-            }
+            DoubleBufferHelper.NhungFormCon(pnlMdiArea, frm);
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -331,13 +396,8 @@ namespace DermaSoft.Forms
                 if (ev.RowIndex < 0) return;
                 int maBN = Convert.ToInt32(_dgvTimKiem.Rows[ev.RowIndex].Cells["colMaBN"].Value);
 
-                pnlMdiArea.Controls.Clear();
                 var detailForm = new BenhNhanDetailForm(maBN);
-                detailForm.TopLevel = false;
-                detailForm.FormBorderStyle = FormBorderStyle.None;
-                detailForm.Dock = DockStyle.Fill;
-                pnlMdiArea.Controls.Add(detailForm);
-                detailForm.Show();
+                DoubleBufferHelper.NhungFormCon(pnlMdiArea, detailForm);
 
                 lblBreadcrumb.Text = "DermaSoft › Hồ Sơ Bệnh Nhân";
             };
@@ -413,8 +473,7 @@ namespace DermaSoft.Forms
             if (result != DialogResult.Yes) return;
 
             LoginForm.NguoiDungHienTai = null;
-            this.Hide();
-            new LoginForm().Show();
+            DangXuat = true;
             this.Close();
         }
 

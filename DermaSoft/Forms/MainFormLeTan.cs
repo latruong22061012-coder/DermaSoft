@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using DermaSoft.Helpers;
 using DermaSoft.Theme;
 using Guna.UI2.WinForms;
 
@@ -18,6 +19,20 @@ namespace DermaSoft.Forms
         // Dùng Guna2Button vì MainForm dùng pattern này — chỉ lưu Parent + Tag
         private Guna2Button _menuHienTai = null;
 
+        /// <summary>Cờ đánh dấu đang đăng xuất (true) hay đóng ứng dụng (false).</summary>
+        internal bool DangXuat { get; private set; } = false;
+
+        // Bật WS_EX_COMPOSITED: OS tự composite toàn bộ cửa sổ → loại bỏ flicker
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
+                return cp;
+            }
+        }
+
         // ══════════════════════════════════════════════════════════════════════
         // CONSTRUCTOR
         // ══════════════════════════════════════════════════════════════════════
@@ -31,6 +46,8 @@ namespace DermaSoft.Forms
                 System.ComponentModel.LicenseManager.UsageMode ==
                 System.ComponentModel.LicenseUsageMode.Designtime)
                 return;
+
+            DoubleBufferHelper.BatDoubleBuffered(pnlMdiArea);
 
             CaiDatThongTinNguoiDung(); // Hiển thị tên + vai trò lên sidebar & topbar
             TaoMenuSidebar();          // Vẽ menu Lễ Tân lên pnlSidebarNav
@@ -225,6 +242,9 @@ namespace DermaSoft.Forms
         ///   3. Cập nhật breadcrumb + tiêu đề topbar
         ///   4. Mở form con tương ứng vào pnlMdiArea
         /// </summary>
+        // SĐT tạm lưu khi điều hướng từ Dashboard → Tiếp Nhận
+        private string _sdtChoTiepNhan = null;
+
         private void MenuItem_Click(Panel pnl, Panel borderLeft, Label lbl)
         {
             // ── Bỏ highlight menu cũ ─────────────────────────────────────────
@@ -264,7 +284,7 @@ namespace DermaSoft.Forms
                                                 lblTopbarTitle.Location.Y);
 
             // ── Mở form con ──────────────────────────────────────────────────
-            MoFormCon(tenMenu);
+            MoFormCon(tenMenu, _sdtChoTiepNhan);
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -280,60 +300,76 @@ namespace DermaSoft.Forms
         }
 
         /// <summary>
+        /// Cho phép form con (VD: DashboardLeTanForm) điều hướng sang menu khác.
+        /// Tìm panel menu theo Tag trong sidebar → gọi MenuItem_Click để
+        /// sidebar highlight + topbar + form con đều cập nhật đồng bộ.
+        /// </summary>
+        internal void ChuyenMenu(string tenMenu)
+        {
+            ChuyenMenu(tenMenu, null);
+        }
+
+        /// <summary>
+        /// Chuyển menu và truyền SĐT bệnh nhân (dùng khi tiếp nhận từ Dashboard).
+        /// </summary>
+        internal void ChuyenMenu(string tenMenu, string soDienThoaiBN)
+        {
+            // Lưu SĐT tạm để MoFormCon sử dụng
+            _sdtChoTiepNhan = soDienThoaiBN;
+
+            foreach (Control c in pnlSidebarNav.Controls)
+            {
+                if (c is Panel pnl && pnl.Tag?.ToString() == tenMenu)
+                {
+                    Panel borderLeft = null;
+                    Label lbl = null;
+                    foreach (Control child in pnl.Controls)
+                    {
+                        if (child is Panel p && p.Width == 3) borderLeft = p;
+                        if (child is Label l) lbl = l;
+                    }
+                    if (borderLeft != null && lbl != null)
+                        MenuItem_Click(pnl, borderLeft, lbl);
+                    _sdtChoTiepNhan = null;
+                    return;
+                }
+            }
+
+            // Fallback
+            MoFormCon(tenMenu, soDienThoaiBN);
+            _sdtChoTiepNhan = null;
+        }
+
+        /// <summary>
         /// Mở form con tương ứng với tên menu được click.
         /// Form con được nhúng trực tiếp vào pnlMdiArea (TopLevel = false, Dock = Fill).
         /// Mỗi lần chuyển menu sẽ xóa form cũ và tạo form mới.
         /// </summary>
         private void MoFormCon(string tenMenu)
         {
-            // Xóa form con đang hiển thị
-            pnlMdiArea.Controls.Clear();
+            MoFormCon(tenMenu, null);
+        }
 
+        private void MoFormCon(string tenMenu, string soDienThoaiBN)
+        {
             Form frm = null;
 
             switch (tenMenu)
             {
-                // ── Tổng quan ────────────────────────────────────────────────
-                case "Dashboard":
-                    frm = new DashboardLeTanForm();   // Dashboard riêng cho Lễ Tân
-                    break;
-
-                // ── Tiếp đón ─────────────────────────────────────────────────
-                case "Quản Lý Lịch Hẹn":
-                    frm = new AppointmentForm();
-                    break;
-
-                case "Quản Lý Bệnh Nhân":
-                    frm = new PatientForm();
-                    break;
-
+                case "Dashboard":           frm = new DashboardLeTanForm(); break;
+                case "Quản Lý Lịch Hẹn":    frm = new AppointmentForm();    break;
+                case "Quản Lý Bệnh Nhân":   frm = new PatientForm();        break;
                 case "Tiếp Nhận Bệnh Nhân":
-                    frm = new TiepNhanForm();
+                    frm = !string.IsNullOrEmpty(soDienThoaiBN)
+                        ? new TiepNhanForm(soDienThoaiBN)
+                        : new TiepNhanForm();
                     break;
-
-                // ── Thanh toán ───────────────────────────────────────────────
-                case "Thanh Toán Hóa Đơn":
-                    frm = new InvoiceForm();
-                    break;
-
-                case "Thẻ Thành Viên":
-                    frm = new MemberForm();
-                    break;
-
-                // ── Hệ thống ─────────────────────────────────────────────────
-                case "Hồ Sơ Cá Nhân":
-                    frm = new ProfileForm();
-                    break;
+                case "Thanh Toán Hóa Đơn":  frm = new InvoiceForm();        break;
+                case "Thẻ Thành Viên":      frm = new MemberForm();         break;
+                case "Hồ Sơ Cá Nhân":       frm = new ProfileForm();        break;
             }
 
-            if (frm != null)
-            {
-                frm.TopLevel = false;                      // Nhúng vào pnlMdiArea
-                frm.FormBorderStyle = FormBorderStyle.None;       // Không có viền riêng
-                frm.Dock = DockStyle.Fill;             // Chiếm toàn bộ pnlMdiArea
-                pnlMdiArea.Controls.Add(frm);
-                frm.Show();
-            }
+            DoubleBufferHelper.NhungFormCon(pnlMdiArea, frm);
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -423,7 +459,8 @@ namespace DermaSoft.Forms
 
             if (result == DialogResult.Yes)
             {
-                LoginForm.NguoiDungHienTai = null; // Xóa thông tin người dùng
+                LoginForm.NguoiDungHienTai = null;
+                DangXuat = true;
                 this.Close();
             }
         }

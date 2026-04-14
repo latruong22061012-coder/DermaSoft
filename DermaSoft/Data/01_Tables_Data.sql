@@ -3,9 +3,6 @@ GO
 USE DERMASOFT;
 GO
 
-
-
-
 -- ============================================================
 -- PHẦN 1: NHÓM 1 - DANH MỤC & CON NGƯỜI
 -- ============================================================
@@ -83,7 +80,8 @@ CREATE TABLE Thuoc (
     TenThuoc     NVARCHAR(100) NOT NULL,
     DonViTinh    NVARCHAR(20)  NOT NULL,
     DonGia       DECIMAL(18,2) NOT NULL DEFAULT 0,
-    SoLuongTon   INT           NOT NULL DEFAULT 0
+    SoLuongTon   INT           NOT NULL DEFAULT 0,
+    IsDeleted    BIT           DEFAULT 0
 );
 
 CREATE TABLE PhieuNhapKho (
@@ -127,7 +125,7 @@ CREATE TABLE LichHen (
     MaBenhNhan         INT           NOT NULL,
     MaNguoiDung        INT           NULL,         -- NULL = lịch website chưa phân công
     ThoiGianHen        DATETIME      NOT NULL,
-    TrangThai          TINYINT       DEFAULT 1,
+    TrangThai          TINYINT       DEFAULT 0,    -- 0=Chờ XN, 1=Đã XN, 2=Hoàn thành, 3=Hủy
     GhiChu             NVARCHAR(200),
     SoDienThoaiKhach   VARCHAR(15)   NULL,          -- SĐT khi đặt qua website
     FOREIGN KEY (MaBenhNhan)  REFERENCES BenhNhan(MaBenhNhan),
@@ -353,23 +351,8 @@ CREATE TABLE LichHen_Notification (
 );
 
 -- ============================================================
--- PHẦN 7: INDEXES CHO HIỆU NĂNG (NguoiDung)
--- ============================================================
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IDX_NguoiDung_SoDienThoai')
-    CREATE INDEX IDX_NguoiDung_SoDienThoai ON NguoiDung(SoDienThoai);
-GO
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IDX_NguoiDung_Email')
-    CREATE INDEX IDX_NguoiDung_Email ON NguoiDung(Email);
-GO
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IDX_NguoiDung_EmailConfirmToken')
-    CREATE INDEX IDX_NguoiDung_EmailConfirmToken ON NguoiDung(EmailConfirmToken);
-GO
-
--- ============================================================
--- PHẦN 8: DỮ LIỆU KHỞI TẠO
+-- PHẦN 7: DỮ LIỆU KHỞI TẠO
+-- (Indexes được tạo tập trung trong 05_Constraints.sql)
 -- ============================================================
 
 -- Tạo VaiTro
@@ -395,11 +378,12 @@ VALUES (N'DarmaSoft Clinic', N'Chăm Sóc Da - SStyle Sống', N'123 Đường N
 GO
 
 -- ✅ TẠO ADMIN USER (SỬ DỤNG BCRYPT PASSWORD)
+-- Mật khẩu mặc định: Admin@2026 (hash bằng BCrypt workFactor=10)
 INSERT INTO NguoiDung 
 (HoTen, SoDienThoai, Email, TenDangNhap, MatKhau, MaVaiTro, TrangThaiTK, EmailVerifiedAt, LastEmailVerificationAt, EmailConfirmationNeeded)
 VALUES 
 (N'Admin DarmaSoft Clinic', '0900000000', 'admin@darmaclinic.vn', 'aB1cD', 
- '$2y$10$p6N.Q6L7Q0a5K8M9d2Z7.OxXz9e2r5q8k7j3n4m5l6b2c9d8e7f6g5', 
+ '$2a$10$63S1lK7cvNppSmkb7vnTs.O1sz/.83/lu0Gg3avuYtI8RKwAzGMfW', 
  1, 1, GETDATE(), GETDATE(), 0);
 GO
 
@@ -425,6 +409,23 @@ VALUES
 (N'Dược Mỹ Phẩm Murad Vietnam', '1900633345', N'397B Võ Văn Tần, Quận 3, TP. HCM'),
 (N'SkinCeuticals Vietnam', '02839369100', N'Tầng 45, Tòa nhà Bitexco Financial Tower, Quận 1, TP. HCM');
 Go
+
+-- ============================================================
+-- PHẦN 8: BẢNG CÀI ĐẶT HỆ THỐNG (key-value settings)
+-- ============================================================
+
+CREATE TABLE CaiDatHeThong (
+    Khoa   VARCHAR(50)    PRIMARY KEY,
+    GiaTri NVARCHAR(500)  NOT NULL,
+    MoTa   NVARCHAR(200)  NULL
+);
+
+INSERT INTO CaiDatHeThong (Khoa, GiaTri, MoTa) VALUES
+('NGUONG_THAP',       '10',         N'Ngưỡng tồn kho mức Thấp'),
+('NGUONG_NGUY_HIEM',  '3',          N'Ngưỡng tồn kho mức Nguy hiểm'),
+('MK_MAC_DINH',       'Temp@2026',  N'Mật khẩu mặc định khi tạo/reset nhân viên');
+GO
+
 PRINT '✅ DATABASE VÀ TABLES CREATED SUCCESSFULLY'
 PRINT 'Admin User: aB1cD | Password: Admin@DarmaSoft2026'
 GO

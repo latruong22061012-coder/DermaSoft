@@ -1,18 +1,13 @@
-<<<<<<< HEAD
-using System;
+﻿using System;
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
 using System.Windows.Forms;
 using DermaSoft.Data;
-=======
-using System.Windows.Forms;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
 namespace DermaSoft.Forms
 {
     /// <summary>
-<<<<<<< HEAD
     /// Dashboard dành riêng cho Lễ Tân.
     /// Hiển thị: 4 KPI cards + bảng lịch hẹn hôm nay + danh sách hóa đơn cần thu.
     /// Tất cả dữ liệu lấy trực tiếp từ SQL Server qua DatabaseConnection.
@@ -23,6 +18,12 @@ namespace DermaSoft.Forms
         public DashboardLeTanForm()
         {
             InitializeComponent();
+
+            this.SetStyle(
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.UserPaint, true);
+            this.UpdateStyles();
 
             // Gắn sự kiện các nút action
             btnTiepNhan.Click += BtnTiepNhan_Click;
@@ -51,9 +52,17 @@ namespace DermaSoft.Forms
 
         private void LoadTatCa()
         {
-            LoadKpiCards();
-            LoadLichHenHomNay();
-            LoadHoaDonCanThu();
+            this.SuspendLayout();
+            try
+            {
+                LoadKpiCards();
+                LoadLichHenHomNay();
+                LoadHoaDonCanThu();
+            }
+            finally
+            {
+                this.ResumeLayout(true);
+            }
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -86,11 +95,14 @@ namespace DermaSoft.Forms
                             AND IsDeleted = 0", conn))
                         benhNhanDangCho = Convert.ToInt32(cmd.ExecuteScalar());
 
-                    // Card 3: Hóa đơn chưa thanh toán (TrangThai = 0)
+                    // Card 3: Phiếu khám hoàn thành chưa thanh toán
                     using (var cmd = new SqlCommand(
-                        @"SELECT COUNT(*) FROM HoaDon
-                          WHERE TrangThai = 0
-                            AND IsDeleted = 0", conn))
+                        @"SELECT COUNT(*) FROM PhieuKham pk
+                          LEFT JOIN HoaDon hd ON pk.MaPhieuKham = hd.MaPhieuKham
+                                              AND hd.IsDeleted = 0
+                          WHERE pk.TrangThai = 2
+                            AND pk.IsDeleted = 0
+                            AND (hd.MaHoaDon IS NULL OR hd.TrangThai = 0)", conn))
                         hoaDonCanThu = Convert.ToInt32(cmd.ExecuteScalar());
 
                     // Card 4: Đã tiếp nhận hôm nay (phiếu khám có ngày hôm nay)
@@ -120,6 +132,8 @@ namespace DermaSoft.Forms
             {
                 const string sql = @"
                     SELECT
+                        lh.MaLichHen,
+                        lh.TrangThai,
                         FORMAT(lh.ThoiGianHen, 'HH:mm')            AS ThoiGianHen,
                         ISNULL(bn.HoTen, 
                             CASE WHEN lh.SoDienThoaiKhach IS NOT NULL 
@@ -131,7 +145,7 @@ namespace DermaSoft.Forms
                         CASE lh.TrangThai
                             WHEN 0 THEN N'Chờ XN'
                             WHEN 1 THEN N'Đã XN'
-                            WHEN 2 THEN N'Hoàn thành'
+                            WHEN 2 THEN N'Đã tiếp nhận'
                             WHEN 3 THEN N'Đã hủy'
                             ELSE        N'Không rõ'
                         END                                          AS TrangThaiText
@@ -144,6 +158,12 @@ namespace DermaSoft.Forms
 
                 DataTable dt = DatabaseConnection.ExecuteQuery(sql);
                 dgvQueue.DataSource = dt;
+
+                // Ẩn cột khóa — chỉ dùng nội bộ cho các nút action
+                if (dgvQueue.Columns["MaLichHen"] != null)
+                    dgvQueue.Columns["MaLichHen"].Visible = false;
+                if (dgvQueue.Columns["TrangThai"] != null)
+                    dgvQueue.Columns["TrangThai"].Visible = false;
 
                 // Tô màu badge cột Trạng Thái sau khi bind
                 TomauTrangThai();
@@ -196,22 +216,32 @@ namespace DermaSoft.Forms
 
         private void LoadHoaDonCanThu()
         {
+            flpHoaDonList.SuspendLayout();
             flpHoaDonList.Controls.Clear();
 
             try
             {
+                // Lấy phiếu khám hoàn thành (TrangThai=2) chưa có hóa đơn đã thanh toán
+                // HOẶC hóa đơn đã tạo nhưng chưa thu (HoaDon.TrangThai=0)
                 const string sql = @"
                     SELECT TOP 10
-                        hd.MaHoaDon,
-                        hd.MaPhieuKham,
-                        ISNULL(bn.HoTen, N'Bệnh nhân') AS TenBenhNhan,
-                        hd.TongTien
-                    FROM HoaDon hd
-                    LEFT JOIN PhieuKham  pk ON hd.MaPhieuKham = pk.MaPhieuKham
-                    LEFT JOIN BenhNhan   bn ON pk.MaBenhNhan   = bn.MaBenhNhan
-                    WHERE hd.TrangThai = 0
-                      AND hd.IsDeleted = 0
-                    ORDER BY hd.NgayTao DESC";
+                        pk.MaPhieuKham,
+                        ISNULL(bn.HoTen, N'Bệnh nhân')   AS TenBenhNhan,
+                        ISNULL(hd.TongTien,
+                            ISNULL(
+                                (SELECT SUM(ctdv.ThanhTien) FROM ChiTietDichVu ctdv WHERE ctdv.MaPhieuKham = pk.MaPhieuKham), 0)
+                            + ISNULL(
+                                (SELECT SUM(cdt.SoLuong * t.DonGia) FROM ChiTietDonThuoc cdt JOIN Thuoc t ON cdt.MaThuoc = t.MaThuoc WHERE cdt.MaPhieuKham = pk.MaPhieuKham), 0)
+                        )                                  AS TongTien,
+                        hd.MaHoaDon
+                    FROM PhieuKham pk
+                    JOIN BenhNhan bn ON pk.MaBenhNhan = bn.MaBenhNhan
+                    LEFT JOIN HoaDon hd ON pk.MaPhieuKham = hd.MaPhieuKham
+                                        AND hd.IsDeleted = 0
+                    WHERE pk.IsDeleted = 0
+                      AND pk.TrangThai = 2
+                      AND (hd.MaHoaDon IS NULL OR hd.TrangThai = 0)
+                    ORDER BY pk.NgayKham DESC";
 
                 DataTable dt = DatabaseConnection.ExecuteQuery(sql);
 
@@ -231,8 +261,8 @@ namespace DermaSoft.Forms
 
                 foreach (DataRow row in dt.Rows)
                 {
-                    int maHoaDon = Convert.ToInt32(row["MaHoaDon"]);
                     int maPhieu = Convert.ToInt32(row["MaPhieuKham"]);
+                    int maHoaDon = row["MaHoaDon"] != DBNull.Value ? Convert.ToInt32(row["MaHoaDon"]) : 0;
                     string tenBN = row["TenBenhNhan"].ToString();
                     decimal tongTien = Convert.ToDecimal(row["TongTien"]);
 
@@ -240,6 +270,10 @@ namespace DermaSoft.Forms
                 }
             }
             catch { }
+            finally
+            {
+                flpHoaDonList.ResumeLayout(true);
+            }
         }
 
         /// <summary>
@@ -312,58 +346,108 @@ namespace DermaSoft.Forms
         // ══════════════════════════════════════════════════════════════════
 
         /// <summary>
-        /// Tiếp nhận bệnh nhân từ lịch hẹn đang chọn trong bảng.
-        /// Tạo phiếu khám mới và chuyển trạng thái lịch hẹn → Hoàn thành (2).
+        /// Tiếp nhận bệnh nhân — điều hướng sang TiepNhanForm trong pnlMdiArea
+        /// của MainFormLeTan.
         /// </summary>
         private void BtnTiepNhan_Click(object sender, EventArgs e)
         {
-            if (dgvQueue.CurrentRow == null)
+            // Lấy SĐT từ lịch hẹn đang chọn trên dgvQueue (để tự động tìm BN khi mở TiepNhanForm)
+            string sdt = null;
+            if (dgvQueue.CurrentRow != null && !dgvQueue.CurrentRow.IsNewRow)
             {
-                MessageBox.Show("Vui lòng chọn một lịch hẹn để tiếp nhận.",
-                    "Chưa chọn lịch hẹn", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                // Đọc từ DataTable source vì tên cột DGV (colSDT) khác DataPropertyName (SoDienThoai)
+                var dt = dgvQueue.DataSource as DataTable;
+                if (dt != null && dgvQueue.CurrentRow.Index < dt.Rows.Count)
+                {
+                    sdt = dt.Rows[dgvQueue.CurrentRow.Index]["SoDienThoai"]?.ToString();
+                }
             }
 
-            // TODO: Mở TiepNhanForm với MaLichHen từ hàng đang chọn
-            // Tạm thời thông báo placeholder
-            MessageBox.Show("Tính năng Tiếp Nhận sẽ mở form Tiếp Nhận Bệnh Nhân.",
-                "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            DieuHuongFormCon("Tiếp Nhận Bệnh Nhân", sdt);
         }
 
-        /// <summary>Mở form Quản Lý Lịch Hẹn để tạo lịch mới.</summary>
+        /// <summary>Mở form Quản Lý Lịch Hẹn trong pnlMdiArea.</summary>
         private void BtnTaoLich_Click(object sender, EventArgs e)
         {
-            // TODO: Điều hướng sang AppointmentForm qua MainFormLeTan
-            MessageBox.Show("Tính năng Tạo Lịch Mới sẽ mở form Quản Lý Lịch Hẹn.",
-                "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            DieuHuongFormCon("Quản Lý Lịch Hẹn");
         }
 
         /// <summary>Xác nhận lịch hẹn đang chọn (TrangThai 0 → 1).</summary>
         private void BtnXacNhan_Click(object sender, EventArgs e)
         {
-            if (dgvQueue.CurrentRow == null)
+            if (dgvQueue.CurrentRow == null || dgvQueue.CurrentRow.IsNewRow)
             {
                 MessageBox.Show("Vui lòng chọn một lịch hẹn để xác nhận.",
                     "Chưa chọn lịch hẹn", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // TODO: Cập nhật TrangThai lịch hẹn lên 1 (Đã xác nhận) trong DB
-            MessageBox.Show("Tính năng Xác Nhận sẽ cập nhật trạng thái lịch hẹn.",
-                "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // Kiểm tra trạng thái hiện tại
+            int trangThai = Convert.ToInt32(dgvQueue.CurrentRow.Cells["TrangThai"].Value);
+            if (trangThai != 0)
+            {
+                MessageBox.Show("Lịch hẹn này đã được xác nhận.",
+                    "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            int maLichHen = Convert.ToInt32(dgvQueue.CurrentRow.Cells["MaLichHen"].Value);
+            string tenBN = dgvQueue.CurrentRow.Cells["colBenhNhan"]?.Value?.ToString() ?? "";
+
+            var confirm = MessageBox.Show(
+                $"Xác nhận lịch hẹn cho \"{tenBN}\"?",
+                "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirm != DialogResult.Yes) return;
+
+            try
+            {
+                const string sql = "UPDATE LichHen SET TrangThai = 1 WHERE MaLichHen = @MaLH";
+                DatabaseConnection.ExecuteNonQuery(sql,
+                    p => p.AddWithValue("@MaLH", maLichHen));
+
+                MessageBox.Show("Đã xác nhận lịch hẹn thành công! ✅",
+                    "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                LoadTatCa();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi xác nhận lịch hẹn:\n" + ex.Message,
+                    "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
-    }
-}
-=======
-    /// Dashboard Lễ Tân — frm-dashboard-lt trong wireframe.
-    /// Hiển thị: queue bệnh nhân chờ, lịch hẹn hôm nay, hóa đơn cần thu.
-    /// </summary>
-    public partial class DashboardLeTanForm : Form
-    {
-        public DashboardLeTanForm()
+
+        /// <summary>
+        /// Điều hướng: gọi MainFormLeTan.ChuyenMenu để
+        /// sidebar highlight + topbar + form con đều cập nhật đồng bộ.
+        /// Dùng BeginInvoke để trì hoãn — tránh Dispose form hiện tại
+        /// trong khi đang thực thi event handler.
+        /// </summary>
+        private void DieuHuongFormCon(string tenMenu, string soDienThoaiBN = null)
         {
-            InitializeComponent();
+            // Dừng timer trước khi chuyển (form sắp bị Dispose)
+            _refreshTimer?.Stop();
+
+            // Duyệt parent chain thủ công để tìm MainFormLeTan
+            MainFormLeTan mainForm = null;
+            Control parent = this.Parent;
+            while (parent != null)
+            {
+                if (parent is MainFormLeTan mf)
+                {
+                    mainForm = mf;
+                    break;
+                }
+                parent = parent.Parent;
+            }
+
+            if (mainForm != null)
+            {
+                mainForm.BeginInvoke(new Action(() =>
+                {
+                    mainForm.ChuyenMenu(tenMenu, soDienThoaiBN);
+                }));
+            }
         }
     }
 }
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

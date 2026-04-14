@@ -442,7 +442,10 @@ namespace DermaSoft.Forms
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("LoadThongTinPK error: " + ex.Message);
+            }
         }
 
         // ══════════════════════════════════════════
@@ -451,6 +454,13 @@ namespace DermaSoft.Forms
 
         private void BtnLuuThongTinPK_Click(object sender, EventArgs e)
         {
+            if (string.IsNullOrEmpty(txtTenPK.Text.Trim()))
+            {
+                MessageBox.Show("Tên phòng khám không được để trống.", "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtTenPK.Focus();
+                return;
+            }
+
             try
             {
                 using (var conn = DatabaseConnection.GetConnection())
@@ -460,67 +470,158 @@ namespace DermaSoft.Forms
                     using (var cmd = new SqlCommand("SELECT TOP 1 MaThongTin FROM ThongTinPhongKham ORDER BY MaThongTin DESC", conn))
                     {
                         var result = cmd.ExecuteScalar();
-                        if (result != null) maThongTin = (int)result;
+                        if (result != null && result != DBNull.Value)
+                            maThongTin = Convert.ToInt32(result);
                     }
 
-                    string sql = maThongTin > 0
-                        ? @"UPDATE ThongTinPhongKham SET TenPhongKham=@Ten, DiaChi=@DC, SoDienThoai=@SDT, 
-                            Email=@Email, Website=@Web, Slogan=@Slogan, DatCapNhatLuc=GETDATE()
-                            WHERE MaThongTin=@Id"
-                        : @"INSERT INTO ThongTinPhongKham (TenPhongKham, DiaChi, SoDienThoai, Email, Website, Slogan)
-                            VALUES (@Ten, @DC, @SDT, @Email, @Web, @Slogan)";
-
-                    using (var cmd = new SqlCommand(sql, conn))
+                    if (maThongTin == 0)
                     {
-                        if (maThongTin > 0) cmd.Parameters.AddWithValue("@Id", maThongTin);
-                        cmd.Parameters.AddWithValue("@Ten", txtTenPK.Text.Trim());
-                        cmd.Parameters.AddWithValue("@DC", txtDiaChi.Text.Trim());
-                        cmd.Parameters.AddWithValue("@SDT", txtSDT.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Email", txtEmail.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Web", txtWebsite.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Slogan", txtSlogan.Text.Trim());
-                        cmd.ExecuteNonQuery();
+                        using (var cmd = new SqlCommand(
+                            @"INSERT INTO ThongTinPhongKham (TenPhongKham, DiaChi, SoDienThoai, Email, Website, Slogan)
+                              VALUES (@Ten, @DC, @SDT, @Email, @Web, @Slogan)", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@Ten", txtTenPK.Text.Trim());
+                            cmd.Parameters.AddWithValue("@DC", txtDiaChi.Text.Trim());
+                            cmd.Parameters.AddWithValue("@SDT", txtSDT.Text.Trim());
+                            cmd.Parameters.AddWithValue("@Email", txtEmail.Text.Trim());
+                            cmd.Parameters.AddWithValue("@Web", txtWebsite.Text.Trim());
+                            cmd.Parameters.AddWithValue("@Slogan", txtSlogan.Text.Trim());
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                    else
+                    {
+                        using (var cmd = new SqlCommand(
+                            @"UPDATE ThongTinPhongKham
+                              SET TenPhongKham = @Ten,
+                                  DiaChi = @DC,
+                                  SoDienThoai = @SDT,
+                                  Email = @Email,
+                                  Website = @Web,
+                                  Slogan = @Slogan,
+                                  DatCapNhatLuc = GETDATE()
+                              WHERE MaThongTin = @Id", conn))
+                        {
+                            cmd.Parameters.Add("@Id", SqlDbType.Int).Value = maThongTin;
+                            cmd.Parameters.AddWithValue("@Ten", txtTenPK.Text.Trim());
+                            cmd.Parameters.AddWithValue("@DC", txtDiaChi.Text.Trim());
+                            cmd.Parameters.AddWithValue("@SDT", txtSDT.Text.Trim());
+                            cmd.Parameters.AddWithValue("@Email", txtEmail.Text.Trim());
+                            cmd.Parameters.AddWithValue("@Web", txtWebsite.Text.Trim());
+                            cmd.Parameters.AddWithValue("@Slogan", txtSlogan.Text.Trim());
+
+                            int rows = cmd.ExecuteNonQuery();
+                            if (rows == 0)
+                            {
+                                MessageBox.Show("Không cập nhật được bản ghi (MaThongTin=" + maThongTin + ").",
+                                    "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                return;
+                            }
+                        }
                     }
                 }
+
+                // Reload dữ liệu từ DB để xác nhận
+                LoadThongTinPK();
                 MessageBox.Show("Lưu thông tin phòng khám thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
-            catch (Exception ex) { MessageBox.Show("Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            catch (Exception ex) { MessageBox.Show("Lỗi khi lưu:\n" + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
         }
 
         private void BtnLuuGioLamViec_Click(object sender, EventArgs e)
         {
+            // ── Validate input ──
+            string rawMo = txtGioMo.Text.Trim();
+            string rawDong = txtGioDong.Text.Trim();
+
+            if (string.IsNullOrEmpty(rawMo) || string.IsNullOrEmpty(rawDong))
+            {
+                MessageBox.Show("Vui lòng nhập đầy đủ Giờ mở cửa và Giờ đóng cửa.\n\nĐịnh dạng: HH:mm (ví dụ: 08:00, 17:30)",
+                    "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            TimeSpan gioMo, gioDong;
+            if (!TimeSpan.TryParse(rawMo, out gioMo))
+            {
+                MessageBox.Show("Giờ mở cửa không hợp lệ: \"" + rawMo + "\"\n\nĐịnh dạng đúng: HH:mm (ví dụ: 08:00)",
+                    "Lỗi định dạng", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtGioMo.Focus();
+                return;
+            }
+            if (!TimeSpan.TryParse(rawDong, out gioDong))
+            {
+                MessageBox.Show("Giờ đóng cửa không hợp lệ: \"" + rawDong + "\"\n\nĐịnh dạng đúng: HH:mm (ví dụ: 17:00)",
+                    "Lỗi định dạng", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtGioDong.Focus();
+                return;
+            }
+
             try
             {
                 using (var conn = DatabaseConnection.GetConnection())
                 {
+                    // Lấy MaThongTin
                     int maThongTin = 0;
                     using (var cmd = new SqlCommand("SELECT TOP 1 MaThongTin FROM ThongTinPhongKham ORDER BY MaThongTin DESC", conn))
                     {
                         var result = cmd.ExecuteScalar();
-                        if (result != null) maThongTin = (int)result;
+                        if (result != null && result != DBNull.Value)
+                            maThongTin = Convert.ToInt32(result);
                     }
 
-                    string sql = maThongTin > 0
-                        ? "UPDATE ThongTinPhongKham SET GioMoCua=@Mo, GioDongCua=@Dong, LichLamViecHangTuan=@Lich, DatCapNhatLuc=GETDATE() WHERE MaThongTin=@Id"
-                        : "INSERT INTO ThongTinPhongKham (TenPhongKham, GioMoCua, GioDongCua, LichLamViecHangTuan) VALUES (N'DermaSoft Clinic', @Mo, @Dong, @Lich)";
-
-                    using (var cmd = new SqlCommand(sql, conn))
+                    if (maThongTin == 0)
                     {
-                        if (maThongTin > 0) cmd.Parameters.AddWithValue("@Id", maThongTin);
+                        // Chưa có record → INSERT
+                        using (var cmd = new SqlCommand(
+                            @"INSERT INTO ThongTinPhongKham (TenPhongKham, GioMoCua, GioDongCua, LichLamViecHangTuan)
+                              VALUES (N'DermaSoft Clinic', @Mo, @Dong, @Lich)", conn))
+                        {
+                            cmd.Parameters.Add("@Mo", SqlDbType.Time).Value = gioMo;
+                            cmd.Parameters.Add("@Dong", SqlDbType.Time).Value = gioDong;
+                            cmd.Parameters.AddWithValue("@Lich",
+                                string.IsNullOrEmpty(txtLichTuan.Text.Trim()) ? (object)DBNull.Value : txtLichTuan.Text.Trim());
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                    else
+                    {
+                        // Có record → UPDATE
+                        using (var cmd = new SqlCommand(
+                            @"UPDATE ThongTinPhongKham
+                              SET GioMoCua = @Mo,
+                                  GioDongCua = @Dong,
+                                  LichLamViecHangTuan = @Lich,
+                                  DatCapNhatLuc = GETDATE()
+                              WHERE MaThongTin = @Id", conn))
+                        {
+                            cmd.Parameters.Add("@Id", SqlDbType.Int).Value = maThongTin;
+                            cmd.Parameters.Add("@Mo", SqlDbType.Time).Value = gioMo;
+                            cmd.Parameters.Add("@Dong", SqlDbType.Time).Value = gioDong;
+                            cmd.Parameters.AddWithValue("@Lich",
+                                string.IsNullOrEmpty(txtLichTuan.Text.Trim()) ? (object)DBNull.Value : txtLichTuan.Text.Trim());
 
-                        TimeSpan gioMo, gioDong;
-                        if (!TimeSpan.TryParse(txtGioMo.Text.Trim(), out gioMo)) gioMo = new TimeSpan(8, 0, 0);
-                        if (!TimeSpan.TryParse(txtGioDong.Text.Trim(), out gioDong)) gioDong = new TimeSpan(17, 0, 0);
-
-                        cmd.Parameters.AddWithValue("@Mo", gioMo);
-                        cmd.Parameters.AddWithValue("@Dong", gioDong);
-                        cmd.Parameters.AddWithValue("@Lich", txtLichTuan.Text.Trim());
-                        cmd.ExecuteNonQuery();
+                            int rows = cmd.ExecuteNonQuery();
+                            if (rows == 0)
+                            {
+                                MessageBox.Show("Không cập nhật được bản ghi (MaThongTin=" + maThongTin + ").\nVui lòng thử lại.",
+                                    "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                return;
+                            }
+                        }
                     }
                 }
-                MessageBox.Show("Lưu giờ làm việc thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                // Reload dữ liệu từ DB để xác nhận
+                LoadThongTinPK();
+                MessageBox.Show("Lưu giờ làm việc thành công!\n\n• Giờ mở cửa: " + gioMo.ToString(@"hh\:mm")
+                    + "\n• Giờ đóng cửa: " + gioDong.ToString(@"hh\:mm"),
+                    "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
-            catch (Exception ex) { MessageBox.Show("Lỗi: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi khi lưu giờ làm việc:\n" + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void BtnBackupDB_Click(object sender, EventArgs e)

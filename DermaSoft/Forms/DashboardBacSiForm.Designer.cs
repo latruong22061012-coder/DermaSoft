@@ -1,9 +1,6 @@
-<<<<<<< HEAD
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using Guna.UI2.WinForms;
 
-=======
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 namespace DermaSoft.Forms
 {
     partial class DashboardBacSiForm
@@ -17,7 +14,6 @@ namespace DermaSoft.Forms
             base.Dispose(disposing);
         }
 
-<<<<<<< HEAD
         #region Controls
         private System.Windows.Forms.TableLayoutPanel tlpStatCards;
         private Guna2Panel pnlCard1;
@@ -593,18 +589,3 @@ namespace DermaSoft.Forms
         private Label lblQueueTitle;
     }
 }
-=======
-        private void InitializeComponent()
-        {
-            this.SuspendLayout();
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1100, 720);
-            this.Name = "DashboardBacSiForm";
-            this.Text = "Dashboard — Bác Sĩ";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.ResumeLayout(false);
-        }
-    }
-}
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using DermaSoft.Enums;
+using DermaSoft.Helpers;
 using DermaSoft.Theme;
 using Guna.UI2.WinForms;
 
@@ -12,11 +13,26 @@ namespace DermaSoft.Forms
     {
         private Guna2Button _menuHienTai = null;
 
+        /// <summary>Cờ đánh dấu đang đăng xuất (true) hay đóng ứng dụng (false).</summary>
+        internal bool DangXuat { get; private set; } = false;
+
+        // Bật WS_EX_COMPOSITED: OS tự composite toàn bộ cửa sổ → loại bỏ flicker
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
+                return cp;
+            }
+        }
+
         public MainForm()
         {
             InitializeComponent();
             if (this.DesignMode || System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime)
                 return;
+            DoubleBufferHelper.BatDoubleBuffered(pnlMdiArea);
             CaiDatThongTinNguoiDung();
             TaoMenuSidebar();
             CapNhatNgayGio();
@@ -104,6 +120,7 @@ namespace DermaSoft.Forms
                 y = ThemMenuItem("\u2728", "D\u1ecbch V\u1ee5", y);
                 y = ThemMenuItem("\uD83D\uDCC8", "B\u00e1o C\u00e1o Doanh Thu", y);
                 y = ThemMenuItem("\uD83D\uDCCB", "B\u00e1o C\u00e1o Kho", y);
+                y = ThemMenuItem("\uD83E\uDDFE", "Qu\u1ea3n L\u00fd H\u00f3a \u0110\u01a1n", y);
 
                 y = ThemSectionLabel("H\u1ec7 Th\u1ed1ng", y);
                 y = ThemMenuItem("\u2B50", "\u0110\u00e1nh Gi\u00e1", y);
@@ -258,8 +275,6 @@ namespace DermaSoft.Forms
 
         private void MoFormCon(string tenMenu)
         {
-            pnlMdiArea.Controls.Clear();
-
             Form frm = null;
             switch (tenMenu)
             {
@@ -278,16 +293,10 @@ namespace DermaSoft.Forms
                 case "L\u1ecbch H\u1eb9n":            frm = new AppointmentForm(); break;
                 case "Phi\u1ebfu Kh\u00e1m":          frm = new PhieuKhamForm(); break;
                 case "B\u1ec7nh Nh\u00e2n":           frm = new PatientForm(); break;
+                case "Qu\u1ea3n L\u00fd H\u00f3a \u0110\u01a1n":  frm = new QuanLyHoaDonForm(); break;
             }
 
-            if (frm != null)
-            {
-                frm.TopLevel = false;
-                frm.FormBorderStyle = FormBorderStyle.None;
-                frm.Dock = DockStyle.Fill;
-                pnlMdiArea.Controls.Add(frm);
-                frm.Show();
-            }
+            DoubleBufferHelper.NhungFormCon(pnlMdiArea, frm);
         }
 
         // ══════════════════════════════════════════
@@ -305,6 +314,7 @@ namespace DermaSoft.Forms
             if (result == DialogResult.Yes)
             {
                 LoginForm.NguoiDungHienTai = null;
+                DangXuat = true;
                 this.Close();
             }
         }

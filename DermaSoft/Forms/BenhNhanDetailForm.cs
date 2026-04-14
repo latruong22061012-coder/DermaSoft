@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-using System;
+﻿using System;
 using System.Data;
 using System.Drawing;
 using System.IO;
@@ -143,6 +142,7 @@ namespace DermaSoft.Forms
                     SELECT pk.MaPhieuKham, pk.NgayKham, YEAR(pk.NgayKham) AS Nam
                     FROM PhieuKham pk
                     WHERE pk.MaBenhNhan = @MaBN AND pk.IsDeleted = 0
+                      AND pk.TrangThai >= 2
                     ORDER BY pk.NgayKham DESC";
 
                 DataTable dt = DatabaseConnection.ExecuteQuery(sql,
@@ -325,6 +325,7 @@ namespace DermaSoft.Forms
         {
             try
             {
+                // Chỉ đếm phiếu khám đã thanh toán (TrangThai = 3)
                 const string sql = @"
                     SELECT
                         COUNT(DISTINCT pk.MaPhieuKham) AS TongLanKham,
@@ -332,7 +333,9 @@ namespace DermaSoft.Forms
                         COUNT(DISTINCT ctt.MaThuoc)    AS SoLoaiThuoc,
                         tvi.TyLeHaiLong
                     FROM BenhNhan bn
-                    LEFT JOIN PhieuKham pk   ON bn.MaBenhNhan = pk.MaBenhNhan AND pk.IsDeleted = 0
+                    LEFT JOIN PhieuKham pk   ON bn.MaBenhNhan = pk.MaBenhNhan
+                                             AND pk.IsDeleted = 0
+                                             AND pk.TrangThai = 3
                     LEFT JOIN ChiTietDichVu ctd ON pk.MaPhieuKham = ctd.MaPhieuKham
                     LEFT JOIN ChiTietDonThuoc ctt ON pk.MaPhieuKham = ctt.MaPhieuKham
                     LEFT JOIN ThanhVienInfo tvi ON bn.MaBenhNhan = tvi.MaBenhNhan
@@ -600,21 +603,3 @@ namespace DermaSoft.Forms
         }
     }
 }
-=======
-using System.Windows.Forms;
-
-namespace DermaSoft.Forms
-{
-    /// <summary>
-    /// Form Chi Tiết Bệnh Nhân — frm-benhnhan-detail trong wireframe.
-    /// Xem toàn bộ hồ sơ bệnh nhân qua VW_HoSoBenhAn: lịch sử khám, đơn thuốc, hình ảnh.
-    /// </summary>
-    public partial class BenhNhanDetailForm : Form
-    {
-        public BenhNhanDetailForm()
-        {
-            InitializeComponent();
-        }
-    }
-}
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

@@ -1,5 +1,7 @@
+﻿using System;
 using System;
 using System.Data;
+using System.Data.SqlClient;
 using System.Drawing;
 using System.Windows.Forms;
 using DermaSoft.Data;
@@ -33,7 +35,6 @@ namespace DermaSoft.Forms
 
         private void DangKyEvents()
         {
-<<<<<<< HEAD
             this.btnDangNhap.Click += BtnDangNhap_Click;
             this.btnShowPassword.Click += BtnShowPassword_Click;
             this.lnkQuenMatKhau.LinkClicked += LnkQuenMatKhau_LinkClicked;
@@ -41,15 +42,6 @@ namespace DermaSoft.Forms
             this.txtMatKhau.KeyDown += TxtInput_KeyDown;
             this.txtTenDangNhap.TextChanged += TxtInput_TextChanged;
             this.txtMatKhau.TextChanged += TxtInput_TextChanged;
-=======
-            this.btnDangNhap.Click    += BtnDangNhap_Click;
-            this.btnShowPassword.Click += BtnShowPassword_Click;
-            this.lnkQuenMatKhau.LinkClicked += LnkQuenMatKhau_LinkClicked;
-            this.txtTenDangNhap.KeyDown += TxtInput_KeyDown;
-            this.txtMatKhau.KeyDown     += TxtInput_KeyDown;
-            this.txtTenDangNhap.TextChanged += TxtInput_TextChanged;
-            this.txtMatKhau.TextChanged     += TxtInput_TextChanged;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
             // Kéo form bằng header (vì FormBorderStyle = None)
             this.pnlHeader.MouseDown += PnlHeader_MouseDown;
@@ -128,11 +120,7 @@ namespace DermaSoft.Forms
         private void ThucHienDangNhap()
         {
             string tenDangNhap = txtTenDangNhap.Text.Trim();
-<<<<<<< HEAD
             string matKhau = txtMatKhau.Text;
-=======
-            string matKhau     = txtMatKhau.Text;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
             // ── Validate đầu vào ──
             if (string.IsNullOrEmpty(tenDangNhap))
@@ -150,11 +138,7 @@ namespace DermaSoft.Forms
 
             // ── Hiệu ứng loading ──
             btnDangNhap.Enabled = false;
-<<<<<<< HEAD
             btnDangNhap.Text = "⏳   Đang kiểm tra...";
-=======
-            btnDangNhap.Text    = "⏳   Đang kiểm tra...";
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
             try
             {
@@ -162,8 +146,11 @@ namespace DermaSoft.Forms
 
                 if (nguoiDung == null)
                 {
-                    HienThiLoi("⚠️  Tên đăng nhập hoặc mật khẩu không đúng!");
+                    // Clear trước, rồi mới hiện lỗi — tránh TextChanged gọi AnLoi() ẩn ngay panel lỗi
+                    txtMatKhau.TextChanged -= TxtInput_TextChanged;
                     txtMatKhau.Clear();
+                    txtMatKhau.TextChanged += TxtInput_TextChanged;
+                    HienThiLoi("⚠️  Tên đăng nhập hoặc mật khẩu không đúng!");
                     txtMatKhau.Focus();
                     return;
                 }
@@ -196,11 +183,7 @@ namespace DermaSoft.Forms
             finally
             {
                 btnDangNhap.Enabled = true;
-<<<<<<< HEAD
                 btnDangNhap.Text = "🔑   Đăng Nhập";
-=======
-                btnDangNhap.Text    = "🔑   Đăng Nhập";
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
             }
         }
 
@@ -239,7 +222,6 @@ namespace DermaSoft.Forms
             return new NguoiDungModel
             {
                 MaNguoiDung = Convert.ToInt32(r["MaNguoiDung"]),
-<<<<<<< HEAD
                 HoTen = r["HoTen"].ToString(),
                 SoDienThoai = r["SoDienThoai"].ToString(),
                 Email = r["Email"].ToString(),
@@ -251,19 +233,6 @@ namespace DermaSoft.Forms
                 AnhDaiDien = r["AnhDaiDien"] == DBNull.Value ? null : r["AnhDaiDien"].ToString(),
                 IsDeleted = Convert.ToBoolean(r["IsDeleted"]),
                 TenVaiTro = r["TenVaiTro"].ToString()
-=======
-                HoTen       = r["HoTen"].ToString(),
-                SoDienThoai = r["SoDienThoai"].ToString(),
-                Email       = r["Email"].ToString(),
-                TenDangNhap = r["TenDangNhap"].ToString(),
-                MaVaiTro    = Convert.ToInt32(r["MaVaiTro"]),
-                TrangThaiTK = Convert.ToBoolean(r["TrangThaiTK"]),
-                DoiMatKhau  = Convert.ToBoolean(r["DoiMatKhau"]),
-                NgayTao     = Convert.ToDateTime(r["NgayTao"]),
-                AnhDaiDien  = r["AnhDaiDien"] == DBNull.Value ? null : r["AnhDaiDien"].ToString(),
-                IsDeleted   = Convert.ToBoolean(r["IsDeleted"]),
-                TenVaiTro   = r["TenVaiTro"].ToString()
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
             };
         }
 
@@ -292,7 +261,9 @@ namespace DermaSoft.Forms
 
         private void MoMainForm()
         {
-<<<<<<< HEAD
+            // Auto điểm danh khi đăng nhập
+            AutoDiemDanh();
+
             var nd = NguoiDungHienTai;
             Form main;
 
@@ -312,12 +283,63 @@ namespace DermaSoft.Forms
                     break;
             }
 
-=======
-            var main = new MainForm();
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
             main.Show();
             this.Hide();
-            main.FormClosed += (s, e) => this.Close();
+
+            main.FormClosed += (s, e) =>
+            {
+                // Kiểm tra cờ DangXuat từ MainForm
+                bool dangXuat = false;
+                if (main is MainForm mf) dangXuat = mf.DangXuat;
+                else if (main is MainFormBacSi mbs) dangXuat = mbs.DangXuat;
+                else if (main is MainFormLeTan mlt) dangXuat = mlt.DangXuat;
+
+                if (dangXuat)
+                {
+                    // Đăng xuất → quay về LoginForm
+                    txtTenDangNhap.Clear();
+                    txtMatKhau.Clear();
+                    AnLoi();
+                    this.Show();
+                    txtTenDangNhap.Focus();
+                }
+                else
+                {
+                    // Đóng ứng dụng (nút ✕)
+                    this.Close();
+                }
+            };
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // AUTO ĐIỂM DANH KHI ĐĂNG NHẬP
+        // ══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Tự động điểm danh cho người dùng khi đăng nhập.
+        /// Cập nhật TrangThaiDiemDanh = 2 (Đã ĐD) cho các PhanCongCa
+        /// của user hôm nay mà vẫn đang ở trạng thái 1 (Chưa ĐD).
+        /// </summary>
+        private void AutoDiemDanh()
+        {
+            if (NguoiDungHienTai == null) return;
+
+            try
+            {
+                int maNguoiDung = NguoiDungHienTai.MaNguoiDung;
+
+                int rows = DatabaseConnection.ExecuteNonQuery(@"
+                    UPDATE PhanCongCa
+                    SET TrangThaiDiemDanh = 2
+                    WHERE MaNguoiDung = @MaNV
+                      AND NgayLamViec = CAST(GETDATE() AS DATE)
+                      AND TrangThaiDiemDanh = 1",
+                    p => p.AddWithValue("@MaNV", maNguoiDung));
+            }
+            catch
+            {
+                // Không block đăng nhập nếu điểm danh lỗi
+            }
         }
 
         // ══════════════════════════════════════════════════════════
@@ -326,11 +348,7 @@ namespace DermaSoft.Forms
 
         private void HienThiLoi(string thongBao)
         {
-<<<<<<< HEAD
             lblError.Text = thongBao;
-=======
-            lblError.Text    = thongBao;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
             pnlError.Visible = true;
 
             // Animation lắc nhẹ textbox
@@ -345,11 +363,7 @@ namespace DermaSoft.Forms
         private async void RungControl(System.Windows.Forms.Control ctrl)
         {
             Point viTriGoc = ctrl.Location;
-<<<<<<< HEAD
             int buoc = 5;
-=======
-            int   buoc     = 5;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
             for (int i = 0; i < 4; i++)
             {
                 ctrl.Left = viTriGoc.X + buoc;
@@ -402,11 +416,7 @@ namespace DermaSoft.Forms
     internal static class NativeMethod
     {
         public const int WM_NCLBUTTONDOWN = 0xA1;
-<<<<<<< HEAD
         public const int HT_CAPTION = 0x2;
-=======
-        public const int HT_CAPTION       = 0x2;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         public static extern bool ReleaseCapture();

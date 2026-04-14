@@ -1,15 +1,11 @@
-<<<<<<< HEAD
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using Guna.UI2.WinForms;
 
-=======
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 namespace DermaSoft.Forms
 {
     partial class AppointmentForm
     {
         private System.ComponentModel.IContainer components = null;
-<<<<<<< HEAD
 
         protected override void Dispose(bool disposing)
         {
@@ -151,7 +147,7 @@ namespace DermaSoft.Forms
             this.tlpLeft.Margin = new System.Windows.Forms.Padding(0, 0, 15, 0);
             this.tlpLeft.Name = "tlpLeft";
             this.tlpLeft.RowCount = 2;
-            this.tlpLeft.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 340F));
+            this.tlpLeft.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 290F));
             this.tlpLeft.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tlpLeft.Size = new System.Drawing.Size(397, 910);
             this.tlpLeft.TabIndex = 0;
@@ -170,7 +166,7 @@ namespace DermaSoft.Forms
             this.pnlCalendar.ShadowDecoration.Color = System.Drawing.Color.FromArgb(((int)(((byte)(226)))), ((int)(((byte)(237)))), ((int)(((byte)(232)))));
             this.pnlCalendar.ShadowDecoration.Depth = 4;
             this.pnlCalendar.ShadowDecoration.Enabled = true;
-            this.pnlCalendar.Size = new System.Drawing.Size(397, 325);
+            this.pnlCalendar.Size = new System.Drawing.Size(397, 275);
             this.pnlCalendar.TabIndex = 0;
             // 
             // mcLichHen
@@ -188,6 +184,7 @@ namespace DermaSoft.Forms
             // 
             // pnlTaoLich
             // 
+            this.pnlTaoLich.AutoScroll = true;
             this.pnlTaoLich.BackColor = System.Drawing.Color.Transparent;
             this.pnlTaoLich.BorderRadius = 12;
             this.pnlTaoLich.Controls.Add(this.tlpFormTaoLich);
@@ -214,7 +211,10 @@ namespace DermaSoft.Forms
             this.tlpFormTaoLich.Controls.Add(this.pnlBacSi, 0, 2);
             this.tlpFormTaoLich.Controls.Add(this.pnlGhiChu, 0, 3);
             this.tlpFormTaoLich.Controls.Add(this.btnTaoLich, 0, 4);
-            this.tlpFormTaoLich.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tlpFormTaoLich.AutoSize = true;
+            this.tlpFormTaoLich.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.tlpFormTaoLich.Dock = System.Windows.Forms.DockStyle.Top;
+            this.tlpFormTaoLich.MinimumSize = new System.Drawing.Size(0, 430);
             this.tlpFormTaoLich.Location = new System.Drawing.Point(20, 64);
             this.tlpFormTaoLich.Margin = new System.Windows.Forms.Padding(4);
             this.tlpFormTaoLich.Name = "tlpFormTaoLich";
@@ -222,7 +222,7 @@ namespace DermaSoft.Forms
             this.tlpFormTaoLich.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 71F));
             this.tlpFormTaoLich.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 124F));
             this.tlpFormTaoLich.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 77F));
-            this.tlpFormTaoLich.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tlpFormTaoLich.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 80F));
             this.tlpFormTaoLich.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 55F));
             this.tlpFormTaoLich.Size = new System.Drawing.Size(357, 486);
             this.tlpFormTaoLich.TabIndex = 1;
@@ -252,7 +252,7 @@ namespace DermaSoft.Forms
             this.txtBenhNhan.Location = new System.Drawing.Point(0, 28);
             this.txtBenhNhan.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.txtBenhNhan.Name = "txtBenhNhan";
-            this.txtBenhNhan.PlaceholderText = "Nhập tên / SĐT...";
+            this.txtBenhNhan.PlaceholderText = "Nhập SĐT bệnh nhân (VD: 0901234567)...";
             this.txtBenhNhan.SelectedText = "";
             this.txtBenhNhan.Size = new System.Drawing.Size(349, 35);
             this.txtBenhNhan.TabIndex = 1;
@@ -563,7 +563,6 @@ namespace DermaSoft.Forms
             "Tất cả",
             "Chờ xác nhận",
             "Đã xác nhận",
-            "Hoàn thành",
             "Đã hủy"});
             this.cmbFilter.Location = new System.Drawing.Point(614, 7);
             this.cmbFilter.Margin = new System.Windows.Forms.Padding(4);
@@ -677,23 +676,3 @@ namespace DermaSoft.Forms
         }
     }
 }
-=======
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null)) components.Dispose();
-            base.Dispose(disposing);
-        }
-        private void InitializeComponent()
-        {
-            this.components = new System.ComponentModel.Container();
-            this.SuspendLayout();
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1060, 768);
-            this.Name = "AppointmentForm";
-            this.Text = "Quản lý lịch hẹn";
-            this.ResumeLayout(false);
-        }
-    }
-}
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

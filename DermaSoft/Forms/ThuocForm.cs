@@ -455,7 +455,8 @@ namespace DermaSoft.Forms
                 using (var cmd = new SqlCommand(
                     @"SELECT MaThuoc, TenThuoc, DonViTinh, DonGia, SoLuongTon
                       FROM Thuoc
-                      WHERE (@Keyword = '' 
+                      WHERE IsDeleted = 0
+                        AND (@Keyword = '' 
                              OR TenThuoc LIKE '%' + @Keyword + '%'
                              OR DonViTinh LIKE '%' + @Keyword + '%')
                       ORDER BY TenThuoc", conn))
@@ -643,7 +644,7 @@ namespace DermaSoft.Forms
                     {
                         // Kiểm tra trùng tên
                         using (var chk = new SqlCommand(
-                            "SELECT COUNT(*) FROM Thuoc WHERE TenThuoc = @Ten", conn))
+                            "SELECT COUNT(*) FROM Thuoc WHERE TenThuoc = @Ten AND IsDeleted = 0", conn))
                         {
                             chk.Parameters.AddWithValue("@Ten", tenThuoc);
                             int count = Convert.ToInt32(chk.ExecuteScalar());
@@ -670,7 +671,7 @@ namespace DermaSoft.Forms
                     {
                         // Kiểm tra trùng tên (trừ bản ghi hiện tại)
                         using (var chk = new SqlCommand(
-                            "SELECT COUNT(*) FROM Thuoc WHERE TenThuoc = @Ten AND MaThuoc <> @Ma", conn))
+                            "SELECT COUNT(*) FROM Thuoc WHERE TenThuoc = @Ten AND MaThuoc <> @Ma AND IsDeleted = 0", conn))
                         {
                             chk.Parameters.AddWithValue("@Ten", tenThuoc);
                             chk.Parameters.AddWithValue("@Ma", _maThuocDangChon);
@@ -723,7 +724,7 @@ namespace DermaSoft.Forms
             try
             {
                 using (var conn = DatabaseConnection.GetConnection())
-                using (var cmd = new SqlCommand("DELETE FROM Thuoc WHERE MaThuoc = @Ma", conn))
+                using (var cmd = new SqlCommand("UPDATE Thuoc SET IsDeleted = 1 WHERE MaThuoc = @Ma", conn))
                 {
                     cmd.Parameters.AddWithValue("@Ma", _maThuocDangChon);
                     cmd.ExecuteNonQuery();
@@ -733,11 +734,7 @@ namespace DermaSoft.Forms
             }
             catch (SqlException ex)
             {
-                if (ex.Message.Contains("REFERENCE") || ex.Number == 547)
-                    MessageBox.Show("Không thể xóa thuốc này vì đã có dữ liệu nhập kho hoặc đơn thuốc liên quan.",
-                        "Không thể xóa", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                else
-                    MessageBox.Show(ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

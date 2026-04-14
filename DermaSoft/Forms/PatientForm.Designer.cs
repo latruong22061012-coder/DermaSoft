@@ -1,15 +1,11 @@
-<<<<<<< HEAD
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using Guna.UI2.WinForms;
 
-=======
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 namespace DermaSoft.Forms
 {
     partial class PatientForm
     {
         private System.ComponentModel.IContainer components = null;
-<<<<<<< HEAD
 
         protected override void Dispose(bool disposing)
         {
@@ -935,23 +931,3 @@ namespace DermaSoft.Forms
         private Label lblTienSu;
     }
 }
-=======
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null)) components.Dispose();
-            base.Dispose(disposing);
-        }
-        private void InitializeComponent()
-        {
-            this.components = new System.ComponentModel.Container();
-            this.SuspendLayout();
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1060, 768);
-            this.Name = "PatientForm";
-            this.Text = "Quản lý bệnh nhân";
-            this.ResumeLayout(false);
-        }
-    }
-}
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

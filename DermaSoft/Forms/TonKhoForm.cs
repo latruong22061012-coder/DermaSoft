@@ -97,7 +97,7 @@ namespace DermaSoft.Forms
             {
                 new { Icon = "🚫", Title = "Lô hết hạn",        Accent = ColorScheme.Danger,  Lbl = lblKpiHetHan },
                 new { Icon = "⏰", Title = "Sắp hết hạn (<30d)", Accent = ColorTranslator.FromHtml("#F97316"), Lbl = lblKpiSapHet },
-                new { Icon = "⚠️", Title = "Cảnh báo (<90d)",    Accent = ColorScheme.Warning, Lbl = lblKpiCanhBao },
+                new { Icon = "📦", Title = "Tồn kho thấp",       Accent = ColorScheme.Warning, Lbl = lblKpiCanhBao },
                 new { Icon = "✅", Title = "Bình thường",         Accent = ColorScheme.Success, Lbl = lblKpiBinhThuong },
             };
 
@@ -192,7 +192,7 @@ namespace DermaSoft.Forms
                 HoverState = { BorderColor = ColorScheme.Primary },
                 DropDownStyle = ComboBoxStyle.DropDownList,
             };
-            cboTrangThai.Items.AddRange(new object[] { "Tất cả trạng thái", "Lô hết hạn", "Sắp hết hạn", "Cảnh báo", "Bình thường" });
+            cboTrangThai.Items.AddRange(new object[] { "Tất cả trạng thái", "Lô hết hạn", "Sắp hết hạn", "Cảnh báo", "Bình thường", "Tồn kho thấp" });
             cboTrangThai.SelectedIndex = 0;
             cboTrangThai.SelectedIndexChanged += (s, e) => ApplyFilter();
             pnlCboWrap.Controls.Add(cboTrangThai);
@@ -410,7 +410,19 @@ namespace DermaSoft.Forms
             if (colName == "TrangThai" && e.Value != null)
             {
                 string v = e.Value.ToString();
-                if (v.Contains("HẾT HẠN"))
+                if (v.Contains("Nguy hiểm"))
+                {
+                    e.CellStyle.BackColor = BadgeDangerBg;
+                    e.CellStyle.ForeColor = BadgeDangerFg;
+                    e.CellStyle.Font = AppFonts.Badge;
+                }
+                else if (v.Contains("Tồn thấp"))
+                {
+                    e.CellStyle.BackColor = ColorTranslator.FromHtml("#FFF7ED");
+                    e.CellStyle.ForeColor = ColorTranslator.FromHtml("#EA580C");
+                    e.CellStyle.Font = AppFonts.Badge;
+                }
+                else if (v.Contains("HẾT HẠN"))
                 {
                     e.CellStyle.BackColor = BadgeDangerBg;
                     e.CellStyle.ForeColor = BadgeDangerFg;
@@ -446,7 +458,7 @@ namespace DermaSoft.Forms
         private void LoadData()
         {
             _allRows.Clear();
-            int cntHetHan = 0, cntSapHet = 0, cntCanhBao = 0, cntBinhThuong = 0;
+            int cntHetHan = 0, cntSapHet = 0, cntTonThap = 0, cntBinhThuong = 0;
 
             try
             {
@@ -490,15 +502,31 @@ namespace DermaSoft.Forms
                         string fefoStr = "#" + fefo;
 
                         string trangThaiIcon;
+                        string trangThaiDisplay = trangThai;
+
                         if (trangThai.Contains("HẾT HẠN")) { trangThaiIcon = "🚫 " + trangThai; cntHetHan++; }
                         else if (trangThai.Contains("Sắp hết")) { trangThaiIcon = "⏰ " + trangThai; cntSapHet++; }
-                        else if (trangThai.Contains("Cảnh báo")) { trangThaiIcon = "⚠️ " + trangThai; cntCanhBao++; }
+                        else if (trangThai.Contains("Cảnh báo")) { trangThaiIcon = "⚠️ " + trangThai; }
                         else { trangThaiIcon = "✅ " + trangThai; cntBinhThuong++; }
+
+                        // Ghi đè trạng thái nếu tồn kho thấp (ưu tiên hiển thị)
+                        if (slTon <= AppSettings.NguongNguyHiem)
+                        {
+                            trangThaiIcon = "🚨 Nguy hiểm (" + slTon + ")";
+                            trangThaiDisplay = "Tồn thấp";
+                            cntTonThap++;
+                        }
+                        else if (slTon <= AppSettings.NguongThap)
+                        {
+                            trangThaiIcon = "📦 Tồn thấp (" + slTon + ")";
+                            trangThaiDisplay = "Tồn thấp";
+                            cntTonThap++;
+                        }
 
                         _allRows.Add(new object[]
                         {
                             tenThuoc, loNhap, ngayNhapStr, hanSDStr, conLaiStr, slTon.ToString(), fefoStr, trangThaiIcon,
-                            trangThai, soNgay.ToString()
+                            trangThaiDisplay, soNgay.ToString()
                         });
                     }
                 }
@@ -511,7 +539,7 @@ namespace DermaSoft.Forms
             // Update KPI
             lblKpiHetHan.Text = cntHetHan.ToString();
             lblKpiSapHet.Text = cntSapHet.ToString();
-            lblKpiCanhBao.Text = cntCanhBao.ToString();
+            lblKpiCanhBao.Text = cntTonThap.ToString();
             lblKpiBinhThuong.Text = cntBinhThuong.ToString();
 
             ApplyFilter();
@@ -551,6 +579,7 @@ namespace DermaSoft.Forms
                         case 2: match = trangThaiRaw.Contains("Sắp hết"); break;
                         case 3: match = trangThaiRaw.Contains("Cảnh báo"); break;
                         case 4: match = trangThaiRaw.Contains("Bình thường"); break;
+                        case 5: match = trangThaiRaw.Contains("Tồn thấp"); break;
                     }
                     if (!match) continue;
                 }

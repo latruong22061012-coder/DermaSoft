@@ -1,17 +1,12 @@
-<<<<<<< HEAD
-using System;
+﻿using System;
 using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using DermaSoft.Data;
-=======
-using System.Windows.Forms;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
 namespace DermaSoft.Forms
 {
     /// <summary>
-<<<<<<< HEAD
     /// Dashboard dành cho Bác Sĩ.
     /// Hiển thị: 3 KPI cards | Queue bệnh nhân chờ khám | Lịch làm việc tuần này
     /// </summary>
@@ -22,6 +17,13 @@ namespace DermaSoft.Forms
         public DashboardBacSiForm()
         {
             InitializeComponent();
+
+            this.SetStyle(
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.UserPaint, true);
+            this.UpdateStyles();
+
             this.Load += DashboardBacSiForm_Load;
 
             btnBatDauKham.Click += BtnBatDauKham_Click;
@@ -75,12 +77,12 @@ namespace DermaSoft.Forms
                     p => p.AddWithValue("@MaBS", _maBacSi));
                 lblCard1Value.Text = val1?.ToString() ?? "0";
 
-                // Card 2: Đã khám hôm nay (TrangThai = 2 = Hoàn thành)
+                // Card 2: Đã khám hôm nay (TrangThai >= 2 = Hoàn thành hoặc Đã TT)
                 object val2 = DatabaseConnection.ExecuteScalar(@"
                     SELECT COUNT(*) FROM PhieuKham
                     WHERE MaNguoiDung = @MaBS
                       AND CAST(NgayKham AS DATE) = CAST(GETDATE() AS DATE)
-                      AND TrangThai IN (1, 2)
+                      AND TrangThai >= 2
                       AND IsDeleted = 0",
                     p => p.AddWithValue("@MaBS", _maBacSi));
                 lblCard2Value.Text = val2?.ToString() ?? "0";
@@ -153,10 +155,12 @@ namespace DermaSoft.Forms
                         AS NVARCHAR(10)) + N' phút'                   AS ChoPhut
                     FROM PhieuKham pk
                     JOIN BenhNhan  bn ON pk.MaBenhNhan = bn.MaBenhNhan
+                    LEFT JOIN LichHen lh ON pk.MaLichHen = lh.MaLichHen
                     WHERE pk.MaNguoiDung = @MaBS
                       AND CAST(pk.NgayKham AS DATE) = CAST(GETDATE() AS DATE)
                       AND pk.TrangThai = 0
                       AND pk.IsDeleted = 0
+                      AND (pk.MaLichHen IS NULL OR lh.TrangThai <> 3)
                     ORDER BY pk.NgayKham ASC";
 
                 DataTable dt = DatabaseConnection.ExecuteQuery(sql,
@@ -281,6 +285,22 @@ namespace DermaSoft.Forms
 
             try
             {
+                // Kiểm tra lịch hẹn liên kết có bị hủy không
+                DataTable dtCheck = DatabaseConnection.ExecuteQuery(@"
+                    SELECT lh.TrangThai FROM PhieuKham pk
+                    JOIN LichHen lh ON pk.MaLichHen = lh.MaLichHen
+                    WHERE pk.MaPhieuKham = @MaPK AND pk.MaLichHen IS NOT NULL",
+                    p => p.AddWithValue("@MaPK", maPhieuKham));
+                if (dtCheck != null && dtCheck.Rows.Count > 0
+                    && Convert.ToInt32(dtCheck.Rows[0]["TrangThai"]) == 3)
+                {
+                    MessageBox.Show(
+                        "Lịch hẹn liên kết với phiếu khám này đã bị hủy.\nKhông thể bắt đầu khám.",
+                        "Lịch hẹn đã hủy", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    LoadQueue();
+                    return;
+                }
+
                 // Cập nhật trạng thái → Đang khám (1)
                 DatabaseConnection.ExecuteNonQuery(
                     "UPDATE PhieuKham SET TrangThai = 1 WHERE MaPhieuKham = @MaPK",
@@ -307,9 +327,19 @@ namespace DermaSoft.Forms
 
             DataTable dt = (DataTable)dgvQueue.DataSource;
             int rowIdx = dgvQueue.CurrentRow.Index;
-            int maPhieuKham = Convert.ToInt32(dt.Rows[rowIdx]["MaPhieuKham"]);
+            int maBN = Convert.ToInt32(dt.Rows[rowIdx]["MaBenhNhan"]);
 
-            MoPhieuKhamForm(maPhieuKham);
+            // Mở Hồ sơ bệnh nhân qua sidebar
+            Panel pnlMdi = this.Parent as Panel;
+            MainFormBacSi mainForm = pnlMdi?.Parent as MainFormBacSi;
+            if (mainForm != null)
+            {
+                mainForm.ChuyenMenu("Hồ Sơ Bệnh Nhân");
+            }
+
+            var detailForm = new BenhNhanDetailForm(maBN);
+            if (pnlMdi != null)
+                Helpers.DoubleBufferHelper.NhungFormCon(pnlMdi, detailForm);
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -331,43 +361,17 @@ namespace DermaSoft.Forms
                 return;
             }
 
-            // [FIX] Cập nhật topbar của MainFormBacSi
+            // Cập nhật topbar + sidebar của MainFormBacSi
             MainFormBacSi mainForm = pnlMdi.Parent as MainFormBacSi;
             if (mainForm != null)
             {
-                // Dùng reflection để tránh phải public các control
-                var lblTitle = mainForm.Controls.Find("lblTopbarTitle", true);
-                var lblBread = mainForm.Controls.Find("lblBreadcrumb", true);
-                if (lblTitle.Length > 0) lblTitle[0].Text = "Phiếu Khám Bệnh";
-                if (lblBread.Length > 0) lblBread[0].Text = "DermaSoft › Phiếu Khám Bệnh";
+                mainForm.ChuyenMenu("Phiếu Khám Bệnh");
             }
 
-            pnlMdi.Controls.Clear();
-
-            var frm = new PhieuKhamForm(maPhieuKham)
-            {
-                TopLevel = false,
-                FormBorderStyle = FormBorderStyle.None,
-                Dock = DockStyle.Fill,
-            };
-
-            pnlMdi.Controls.Add(frm);
-            frm.Show();
+            var frm = new PhieuKhamForm(maPhieuKham);
+            Helpers.DoubleBufferHelper.NhungFormCon(pnlMdi, frm);
         }
 
 
     }
 }
-=======
-    /// Dashboard Bác Sĩ — frm-dashboard-bs trong wireframe.
-    /// Hiển thị: queue bệnh nhân hôm nay, lịch khám, thống kê nhanh.
-    /// </summary>
-    public partial class DashboardBacSiForm : Form
-    {
-        public DashboardBacSiForm()
-        {
-            InitializeComponent();
-        }
-    }
-}
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

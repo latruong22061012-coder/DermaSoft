@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-using System;
+﻿using System;
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
@@ -82,22 +81,48 @@ namespace DermaSoft.Forms
         // LOAD DỮ LIỆU
         // ══════════════════════════════════════════════════════════════════
 
-        /// <summary>Nạp danh sách bác sĩ vào cmbBacSi.</summary>
+        /// <summary>
+        /// Nạp danh sách bác sĩ vào cmbBacSi.
+        /// Ưu tiên BS có phân ca làm việc ngày được chọn, vẫn hiện BS khác.
+        /// </summary>
         private void LoadDanhSachBacSi()
+        {
+            LoadDanhSachBacSi(mcLichHen.SelectionStart);
+        }
+
+        private void LoadDanhSachBacSi(DateTime ngay)
         {
             try
             {
                 const string sql = @"
-                    SELECT MaNguoiDung, HoTen
-                    FROM   NguoiDung
-                    WHERE  MaVaiTro = 2        -- VaiTro.BacSi
-                      AND  TrangThaiTK = 1
-                      AND  IsDeleted   = 0
-                    ORDER BY HoTen";
+                    SELECT
+                        nd.MaNguoiDung,
+                        nd.HoTen + ISNULL(
+                            N' — ' + (
+                                SELECT STRING_AGG(clv.TenCa, N', ')
+                                FROM PhanCongCa pcc
+                                JOIN CaLamViec clv ON pcc.MaCa = clv.MaCa
+                                WHERE pcc.MaNguoiDung = nd.MaNguoiDung
+                                  AND pcc.NgayLamViec = @Ngay
+                            ),
+                            N' (Không có ca)'
+                        ) AS TenHienThi,
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM PhanCongCa pcc2
+                            WHERE pcc2.MaNguoiDung = nd.MaNguoiDung
+                              AND pcc2.NgayLamViec = @Ngay
+                        ) THEN 0 ELSE 1 END AS ThuTu
+                    FROM NguoiDung nd
+                    WHERE nd.MaVaiTro = 2
+                      AND nd.TrangThaiTK = 1
+                      AND nd.IsDeleted = 0
+                    ORDER BY ThuTu, nd.HoTen";
 
-                DataTable dt = DatabaseConnection.ExecuteQuery(sql);
+                DataTable dt = DatabaseConnection.ExecuteQuery(sql,
+                    p => p.AddWithValue("@Ngay", ngay.Date));
+
                 cmbBacSi.DataSource = dt;
-                cmbBacSi.DisplayMember = "HoTen";
+                cmbBacSi.DisplayMember = "TenHienThi";
                 cmbBacSi.ValueMember = "MaNguoiDung";
 
                 if (dt != null && dt.Rows.Count > 0)
@@ -106,18 +131,44 @@ namespace DermaSoft.Forms
             catch { }
         }
 
-        /// <summary>Load các khung giờ hẹn (07:00 → 20:00, bước 30 phút) vào cmbGioHen.</summary>
+        /// <summary>
+        /// Load các khung giờ hẹn đồng bộ với giờ hoạt động phòng khám (trước 1 tiếng đóng cửa).
+        /// Đọc GioMoCua/GioDongCua từ ThongTinPhongKham, bước 30 phút.
+        /// </summary>
         private void KhoiTaoCmbGioHen()
         {
             cmbGioHen.Items.Clear();
-            for (int h = 7; h <= 20; h++)
+
+            int gioBatDau = 8;   // mặc định
+            int gioKetThuc = 17; // mặc định
+
+            try
+            {
+                var result = DatabaseConnection.ExecuteQuery(
+                    "SELECT TOP 1 GioMoCua, GioDongCua FROM ThongTinPhongKham ORDER BY MaThongTin DESC");
+                if (result != null && result.Rows.Count > 0)
+                {
+                    var row = result.Rows[0];
+                    if (row["GioMoCua"] != DBNull.Value)
+                        gioBatDau = ((TimeSpan)row["GioMoCua"]).Hours;
+                    if (row["GioDongCua"] != DBNull.Value)
+                        gioKetThuc = ((TimeSpan)row["GioDongCua"]).Hours - 1; // trước 1 tiếng đóng cửa
+                }
+            }
+            catch { /* fallback mặc định */ }
+
+            if (gioKetThuc <= gioBatDau) gioKetThuc = gioBatDau + 1;
+
+            for (int h = gioBatDau; h <= gioKetThuc; h++)
             {
                 cmbGioHen.Items.Add($"{h:D2}:00");
-                if (h < 20)
+                if (h < gioKetThuc)
                     cmbGioHen.Items.Add($"{h:D2}:30");
             }
-            // Mặc định 09:00
-            cmbGioHen.SelectedItem = "09:00";
+
+            // Mặc định giờ đầu tiên
+            if (cmbGioHen.Items.Count > 0)
+                cmbGioHen.SelectedIndex = 0;
         }
 
         /// <summary>
@@ -144,7 +195,7 @@ namespace DermaSoft.Forms
                         CASE lh.TrangThai
                             WHEN 0 THEN N'Chờ XN'
                             WHEN 1 THEN N'✓ XN'
-                            WHEN 2 THEN N'Hoàn thành'
+                            WHEN 2 THEN N'Đã tiếp nhận'
                             WHEN 3 THEN N'Đã hủy'
                             ELSE        N'Không rõ'
                         END AS TrangThaiText,
@@ -217,6 +268,8 @@ namespace DermaSoft.Forms
                         bg = ClrChoBg; fg = ClrChoFg; break;
                     case "Đã hủy":
                         bg = ClrHuyBg; fg = ClrHuyFg; break;
+                    case "Đã tiếp nhận":
+                        bg = Color.FromArgb(219, 234, 254); fg = Color.FromArgb(30, 64, 175); break;
                     default:
                         bg = ClrDoneBg; fg = ClrDoneFg; break;
                 }
@@ -238,6 +291,7 @@ namespace DermaSoft.Forms
         private void McLichHen_DateChanged(object sender, DateRangeEventArgs e)
         {
             LoadLichHen(e.Start, txtSearch.Text, LayTrangThaiFilter());
+            LoadDanhSachBacSi(e.Start);
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -261,8 +315,7 @@ namespace DermaSoft.Forms
             {
                 case 1: return 0; // Chờ xác nhận
                 case 2: return 1; // Đã xác nhận
-                case 3: return 2; // Hoàn thành
-                case 4: return 3; // Đã hủy
+                case 3: return 3; // Đã hủy
                 default: return -1;
             }
         }
@@ -273,23 +326,25 @@ namespace DermaSoft.Forms
 
         private void DgvLichHen_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex != dgvLichHen.Columns["colThaoTac"].Index)
-                return;
+            if (e.RowIndex < 0) return;
 
             DataTable dt = (DataTable)dgvLichHen.DataSource;
             int maLichHen = Convert.ToInt32(dt.Rows[e.RowIndex]["MaLichHen"]);
             int trangThai = Convert.ToInt32(dt.Rows[e.RowIndex]["TrangThai"]);
-            string thaoTac = dgvLichHen.Rows[e.RowIndex].Cells["colThaoTac"].Value?.ToString() ?? "";
 
-            if (thaoTac == "XN | Hủy")
+            // Click cột Thao tác → XN/Hủy/Sửa
+            if (e.ColumnIndex == dgvLichHen.Columns["colThaoTac"].Index)
             {
-                // Hiện context menu hoặc dialog chọn
-                XacNhanHoacHuy(maLichHen);
+                string thaoTac = dgvLichHen.Rows[e.RowIndex].Cells["colThaoTac"].Value?.ToString() ?? "";
+                if (thaoTac == "XN | Hủy")
+                    XacNhanHoacHuy(maLichHen);
+                else if (thaoTac == "Sửa")
+                    SuaLichHen(maLichHen);
+                return;
             }
-            else if (thaoTac == "Sửa")
-            {
-                SuaLichHen(maLichHen);
-            }
+
+            // Click bất kỳ cột khác → xem chi tiết
+            HienChiTietLichHen(maLichHen);
         }
 
         private void XacNhanHoacHuy(int maLichHen)
@@ -323,11 +378,195 @@ namespace DermaSoft.Forms
             // Cancel → không làm gì
         }
 
+        /// <summary>Hiện chi tiết lịch hẹn trong dialog.</summary>
+        private void HienChiTietLichHen(int maLichHen)
+        {
+            try
+            {
+                const string sql = @"
+                    SELECT
+                        lh.MaLichHen,
+                        FORMAT(lh.ThoiGianHen, 'HH:mm dd/MM/yyyy') AS ThoiGian,
+                        ISNULL(bn.HoTen, N'Chưa rõ')                AS TenBN,
+                        ISNULL(bn.SoDienThoai, ISNULL(lh.SoDienThoaiKhach, N'—')) AS SoDienThoai,
+                        ISNULL(bn.GioiTinh, 0)                      AS GioiTinh,
+                        ISNULL(FORMAT(bn.NgaySinh, 'dd/MM/yyyy'), N'—') AS NgaySinh,
+                        ISNULL(nd.HoTen, N'Chưa phân công')         AS TenBacSi,
+                        ISNULL(lh.GhiChu, N'')                      AS GhiChu,
+                        CASE lh.TrangThai
+                            WHEN 0 THEN N'Chờ xác nhận'
+                            WHEN 1 THEN N'Đã xác nhận'
+                            WHEN 2 THEN N'Đã tiếp nhận'
+                            WHEN 3 THEN N'Đã hủy'
+                            ELSE N'Không rõ'
+                        END AS TrangThai
+                    FROM LichHen lh
+                    LEFT JOIN BenhNhan  bn ON lh.MaBenhNhan  = bn.MaBenhNhan
+                    LEFT JOIN NguoiDung nd ON lh.MaNguoiDung = nd.MaNguoiDung
+                    WHERE lh.MaLichHen = @MaLH";
+
+                DataTable dt = DatabaseConnection.ExecuteQuery(sql,
+                    p => p.AddWithValue("@MaLH", maLichHen));
+
+                if (dt == null || dt.Rows.Count == 0)
+                {
+                    MessageBox.Show("Không tìm thấy lịch hẹn.", "Lỗi",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                DataRow r = dt.Rows[0];
+                string msg = $"📋 CHI TIẾT LỊCH HẸN #{maLichHen}\n" +
+                    $"{'─', 40}\n" +
+                    $"🕐  Thời gian:  {r["ThoiGian"]}\n" +
+                    $"👤  Bệnh nhân:  {r["TenBN"]}\n" +
+                    $"📞  SĐT:        {r["SoDienThoai"]}\n" +
+                    $"🎂  Ngày sinh:   {r["NgaySinh"]}\n" +
+                    $"🩺  Bác sĩ:     {r["TenBacSi"]}\n" +
+                    $"📝  Ghi chú:     {r["GhiChu"]}\n" +
+                    $"📌  Trạng thái:  {r["TrangThai"]}";
+
+                MessageBox.Show(msg, "Chi tiết lịch hẹn",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi: " + ex.Message, "Lỗi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>Sửa lịch hẹn: cho phép thay đổi bác sĩ, giờ hẹn, ghi chú.</summary>
         private void SuaLichHen(int maLichHen)
         {
-            // TODO: Mở dialog sửa lịch hẹn
-            MessageBox.Show($"Sửa lịch hẹn #{maLichHen} — tính năng đang phát triển.",
-                "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                // Load thông tin hiện tại
+                DataTable dtLH = DatabaseConnection.ExecuteQuery(
+                    "SELECT MaNguoiDung, ThoiGianHen, GhiChu FROM LichHen WHERE MaLichHen = @MaLH",
+                    p => p.AddWithValue("@MaLH", maLichHen));
+
+                if (dtLH == null || dtLH.Rows.Count == 0)
+                {
+                    MessageBox.Show("Không tìm thấy lịch hẹn.", "Lỗi",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                DataRow lr = dtLH.Rows[0];
+                DateTime thoiGianCu = Convert.ToDateTime(lr["ThoiGianHen"]);
+                string ghiChuCu = lr["GhiChu"]?.ToString() ?? "";
+                int? maBSCu = lr["MaNguoiDung"] != DBNull.Value ? Convert.ToInt32(lr["MaNguoiDung"]) : (int?)null;
+
+                // Tạo dialog sửa
+                using (var dlg = new Form
+                {
+                    Text = $"Sửa lịch hẹn #{maLichHen}",
+                    Size = new Size(420, 340),
+                    StartPosition = FormStartPosition.CenterParent,
+                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    MaximizeBox = false, MinimizeBox = false,
+                    BackColor = Color.White,
+                    Font = new Font("Segoe UI", 9.5f)
+                })
+                {
+                    int y = 16, xLbl = 16, xCtrl = 120, wCtrl = 260;
+
+                    dlg.Controls.Add(new Label { Text = "Bác sĩ:", Location = new Point(xLbl, y + 4), AutoSize = true });
+                    var cboBS = new ComboBox { Location = new Point(xCtrl, y), Width = wCtrl, DropDownStyle = ComboBoxStyle.DropDownList };
+                    DataTable dtBS = DatabaseConnection.ExecuteQuery(
+                        @"SELECT MaNguoiDung, HoTen FROM NguoiDung
+                          WHERE MaVaiTro=2 AND TrangThaiTK=1 AND IsDeleted=0 ORDER BY HoTen");
+                    cboBS.DisplayMember = "HoTen";
+                    cboBS.ValueMember = "MaNguoiDung";
+                    cboBS.DataSource = dtBS;
+                    if (maBSCu.HasValue)
+                    {
+                        cboBS.SelectedValue = maBSCu.Value;
+                    }
+                    dlg.Controls.Add(cboBS);
+                    y += 40;
+
+                    dlg.Controls.Add(new Label { Text = "Ngày hẹn:", Location = new Point(xLbl, y + 4), AutoSize = true });
+                    var dtpNgay = new DateTimePicker { Location = new Point(xCtrl, y), Width = wCtrl, Format = DateTimePickerFormat.Short, Value = thoiGianCu.Date };
+                    dlg.Controls.Add(dtpNgay);
+                    y += 40;
+
+                    dlg.Controls.Add(new Label { Text = "Giờ hẹn:", Location = new Point(xLbl, y + 4), AutoSize = true });
+                    var cboGio = new ComboBox { Location = new Point(xCtrl, y), Width = wCtrl, DropDownStyle = ComboBoxStyle.DropDownList };
+                    for (int h = 7; h <= 20; h++)
+                    {
+                        cboGio.Items.Add($"{h:D2}:00");
+                        if (h < 20) cboGio.Items.Add($"{h:D2}:30");
+                    }
+                    cboGio.SelectedItem = thoiGianCu.ToString("HH:mm");
+                    if (cboGio.SelectedIndex < 0) cboGio.SelectedIndex = 0;
+                    dlg.Controls.Add(cboGio);
+                    y += 40;
+
+                    dlg.Controls.Add(new Label { Text = "Ghi chú:", Location = new Point(xLbl, y + 4), AutoSize = true });
+                    var txtGC = new TextBox { Location = new Point(xCtrl, y), Width = wCtrl, Height = 60, Multiline = true, Text = ghiChuCu };
+                    dlg.Controls.Add(txtGC);
+                    y += 80;
+
+                    var btnLuu = new Button
+                    {
+                        Text = "💾 Lưu", Location = new Point(xCtrl, y), Width = 120, Height = 36,
+                        BackColor = Color.FromArgb(15, 92, 77), ForeColor = Color.White,
+                        FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold)
+                    };
+                    var btnHuy = new Button
+                    {
+                        Text = "Hủy", Location = new Point(xCtrl + 130, y), Width = 80, Height = 36,
+                        FlatStyle = FlatStyle.Flat
+                    };
+                    btnHuy.Click += (s2, e2) => dlg.DialogResult = DialogResult.Cancel;
+
+                    btnLuu.Click += (s2, e2) =>
+                    {
+                        string gioMoi = cboGio.SelectedItem?.ToString() ?? "09:00";
+                        int hh = int.Parse(gioMoi.Split(':')[0]);
+                        int mm = int.Parse(gioMoi.Split(':')[1]);
+                        DateTime thoiGianMoi = dtpNgay.Value.Date.AddHours(hh).AddMinutes(mm);
+                        int maBSMoi = Convert.ToInt32(cboBS.SelectedValue);
+                        string ghiChuMoi = txtGC.Text.Trim();
+
+                        int rows = DatabaseConnection.ExecuteNonQuery(
+                            @"UPDATE LichHen SET MaNguoiDung=@MaBS, ThoiGianHen=@TG, GhiChu=@GC
+                              WHERE MaLichHen=@MaLH",
+                            p =>
+                            {
+                                p.AddWithValue("@MaBS", maBSMoi);
+                                p.AddWithValue("@TG", thoiGianMoi);
+                                p.AddWithValue("@GC", string.IsNullOrEmpty(ghiChuMoi) ? (object)DBNull.Value : ghiChuMoi);
+                                p.AddWithValue("@MaLH", maLichHen);
+                            });
+
+                        if (rows > 0)
+                        {
+                            MessageBox.Show("Đã cập nhật lịch hẹn thành công! ✅",
+                                "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            dlg.DialogResult = DialogResult.OK;
+                        }
+                        else
+                        {
+                            MessageBox.Show("Không cập nhật được.", "Lỗi",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    };
+
+                    dlg.Controls.Add(btnLuu);
+                    dlg.Controls.Add(btnHuy);
+
+                    if (dlg.ShowDialog(this) == DialogResult.OK)
+                        LoadLichHen(mcLichHen.SelectionStart, txtSearch.Text, LayTrangThaiFilter());
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi sửa lịch hẹn: " + ex.Message, "Lỗi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void CapNhatTrangThai(int maLichHen, int trangThai, string tenHanhDong)
@@ -410,12 +649,14 @@ namespace DermaSoft.Forms
             string tenDat = laSdt ? "Khách" : tenHoacSDT;
             string sdtDat = laSdt ? tenHoacSDT : "";
 
-            // Nếu không phải SĐT và không phải SĐT → bắt buộc phải nhập SĐT mới tạo được BN
-            if (!laSdt && string.IsNullOrEmpty(sdtDat))
+            // Nếu nhập tên thay vì SĐT → yêu cầu nhập SĐT vào ô riêng
+            if (!laSdt)
             {
                 MessageBox.Show(
-                    "Vui lòng nhập số điện thoại (10 chữ số bắt đầu bằng 0) để tạo lịch hẹn.",
+                    "Vui lòng nhập số điện thoại (10 chữ số bắt đầu bằng 0) để tạo lịch hẹn.\n" +
+                    "Hệ thống sẽ tự tìm hoặc tạo hồ sơ bệnh nhân theo SĐT.",
                     "Cần số điện thoại", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtBenhNhan.Focus();
                 return;
             }
 
@@ -470,17 +711,3 @@ namespace DermaSoft.Forms
         }
     }
 }
-=======
-using System.Windows.Forms;
-
-namespace DermaSoft.Forms
-{
-    public partial class AppointmentForm : Form
-    {
-        public AppointmentForm()
-        {
-            InitializeComponent();
-        }
-    }
-}
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1

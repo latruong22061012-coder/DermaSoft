@@ -36,7 +36,7 @@ namespace DermaSoft.Models
         public decimal          TongThuoc            { get; set; }  // TongThuoc            — Tiền thuốc
         public decimal          GiamGia              { get; set; }  // GiamGia              — Số tiền giảm giá
         public decimal          TienKhachTra         { get; set; }  // TienKhachTra         — Tiền khách đưa
-        public decimal          TienThua             { get; set; }  // TienThua             — Tiền thẺ
+        public decimal          TienThua             { get; set; }  // TienThua             — Tiền thừa
         public string           PhuongThucThanhToan  { get; set; }  // PhuongThucThanhToan  — Hình thức thanh toán
         public DateTime?        NgayThanhToan        { get; set; }  // NgayThanhToan        — Ngày thanh toán (có thể NULL)
         public DateTime         NgayTao              { get; set; }  // NgayTao              — Ngày tạo

@@ -1,4 +1,4 @@
-namespace DermaSoft.Forms
+﻿namespace DermaSoft.Forms
 {
     partial class HinhAnhForm
     {
@@ -13,7 +13,6 @@ namespace DermaSoft.Forms
 
         private void InitializeComponent()
         {
-<<<<<<< HEAD
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle5 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle6 = new System.Windows.Forms.DataGridViewCellStyle();
@@ -722,16 +721,5 @@ namespace DermaSoft.Forms
         private Guna.UI2.WinForms.Guna2TextBox txtGhiChuAnh;
         private System.Windows.Forms.Panel pnlSpace6;
         private System.Windows.Forms.Panel pnlSpace5;
-=======
-            this.SuspendLayout();
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1000, 680);
-            this.Name = "HinhAnhForm";
-            this.Text = "Hình Ảnh Bệnh Lý";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.ResumeLayout(false);
-        }
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
     }
 }

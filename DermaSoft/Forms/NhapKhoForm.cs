@@ -382,15 +382,27 @@ namespace DermaSoft.Forms
             };
             _btnInPhieu.Click += BtnInPhieu_Click;
 
+            var btnLichSu = new Guna2Button
+            {
+                Text = "📜  Lịch Sử Nhập Kho",
+                Font = AppFonts.BodyBold, ForeColor = ColorScheme.PrimaryDark,
+                FillColor = ColorScheme.PrimaryPale, BorderRadius = 20,
+                BorderThickness = 1, BorderColor = ColorScheme.PrimaryLight,
+                Size = new Size(200, 38), Cursor = Cursors.Hand,
+            };
+            btnLichSu.Click += BtnLichSu_Click;
+
             pnlBtns.Controls.Add(btnLuu);
             pnlBtns.Controls.Add(_btnInPhieu);
+            pnlBtns.Controls.Add(btnLichSu);
             pnlBtns.Controls.Add(btnHuy);
             pnlBtns.Resize += (s, e) =>
             {
                 int pw = pnlBtns.Width;
                 btnLuu.Location = new Point(pw - 180 - 16, 6);
                 _btnInPhieu.Location = new Point(pw - 180 - 16 - 138, 6);
-                btnHuy.Location = new Point(pw - 180 - 16 - 138 - 108, 6);
+                btnLichSu.Location = new Point(pw - 180 - 16 - 138 - 208, 6);
+                btnHuy.Location = new Point(pw - 180 - 16 - 138 - 208 - 108, 6);
             };
 
             pnl.Controls.Add(pnlBtns);
@@ -538,6 +550,227 @@ namespace DermaSoft.Forms
         // LOAD COMBO DATA
         // ══════════════════════════════════════════
 
+        // ══════════════════════════════════════════
+        // LỊCH SỬ NHẬP KHO
+        // ══════════════════════════════════════════
+
+        private void BtnLichSu_Click(object sender, EventArgs e)
+        {
+            var frm = new Form
+            {
+                Text = "📜 Lịch Sử Nhập Kho",
+                Size = new Size(1000, 600),
+                StartPosition = FormStartPosition.CenterParent,
+                Font = AppFonts.Body,
+                BackColor = ColorScheme.Background,
+                FormBorderStyle = FormBorderStyle.Sizable,
+                MinimumSize = new Size(780, 450),
+            };
+
+            // ── Header panel ──
+            var pnlHeader = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 70,
+                BackColor = Color.Transparent,
+                Padding = new Padding(24, 16, 24, 8),
+            };
+            pnlHeader.Paint += (s2, pe) =>
+            {
+                using (var br = new System.Drawing.Drawing2D.LinearGradientBrush(
+                    new Rectangle(0, 0, pnlHeader.Width, pnlHeader.Height),
+                    ColorScheme.PrimaryDark, Color.FromArgb(26, 95, 77),
+                    System.Drawing.Drawing2D.LinearGradientMode.Horizontal))
+                    pe.Graphics.FillRectangle(br, 0, 0, pnlHeader.Width, pnlHeader.Height);
+            };
+            var lblTitle = new Label
+            {
+                Text = "📜  Lịch Sử Phiếu Nhập Kho",
+                Font = new Font("Segoe UI", 14f, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                AutoSize = true,
+                Location = new Point(24, 10),
+            };
+            pnlHeader.Controls.Add(lblTitle);
+
+            // ── Summary panel ──
+            var pnlSummary = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 52,
+                BackColor = ColorScheme.PrimaryPale,
+                Padding = new Padding(24, 10, 24, 10),
+            };
+            var lblSummary = new Label
+            {
+                Font = AppFonts.BodyBold,
+                ForeColor = ColorScheme.PrimaryDark,
+                BackColor = Color.Transparent,
+                AutoSize = true,
+                Location = new Point(24, 14),
+            };
+            pnlSummary.Controls.Add(lblSummary);
+
+            // ── DataGridView ──
+            var dgv = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                RowHeadersVisible = false,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                Font = AppFonts.Body,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                GridColor = ColorScheme.Border,
+            };
+            dgv.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.FromArgb(245, 251, 247),
+                ForeColor = ColorScheme.PrimaryDark,
+                Font = AppFonts.BodyBold,
+                Alignment = DataGridViewContentAlignment.MiddleLeft,
+                Padding = new Padding(12, 0, 0, 0),
+            };
+            dgv.ColumnHeadersHeight = 44;
+            dgv.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            dgv.EnableHeadersVisualStyles = false;
+            dgv.DefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.White,
+                ForeColor = ColorScheme.TextDark,
+                SelectionBackColor = Color.FromArgb(220, 245, 234),
+                SelectionForeColor = ColorScheme.PrimaryDark,
+                Padding = new Padding(12, 0, 0, 0),
+            };
+            dgv.AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.FromArgb(250, 253, 251),
+                SelectionBackColor = Color.FromArgb(220, 245, 234),
+                SelectionForeColor = ColorScheme.PrimaryDark,
+            };
+            dgv.RowTemplate.Height = 40;
+
+            // Hover effect
+            int _hoverRow = -1;
+            dgv.CellMouseEnter += (s2, ce) =>
+            {
+                if (ce.RowIndex >= 0 && ce.RowIndex != _hoverRow)
+                {
+                    _hoverRow = ce.RowIndex;
+                    dgv.InvalidateRow(ce.RowIndex);
+                }
+            };
+            dgv.CellMouseLeave += (s2, ce) =>
+            {
+                if (ce.RowIndex >= 0)
+                {
+                    int old = _hoverRow;
+                    _hoverRow = -1;
+                    if (old >= 0 && old < dgv.Rows.Count) dgv.InvalidateRow(old);
+                }
+            };
+            dgv.RowPrePaint += (s2, rpe) =>
+            {
+                if (rpe.RowIndex == _hoverRow && !dgv.Rows[rpe.RowIndex].Selected)
+                {
+                    dgv.Rows[rpe.RowIndex].DefaultCellStyle.BackColor = Color.FromArgb(232, 248, 240);
+                }
+                else if (rpe.RowIndex != _hoverRow && !dgv.Rows[rpe.RowIndex].Selected)
+                {
+                    dgv.Rows[rpe.RowIndex].DefaultCellStyle.BackColor =
+                        rpe.RowIndex % 2 == 0 ? Color.White : Color.FromArgb(250, 253, 251);
+                }
+            };
+
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "MaPhieu", HeaderText = "Mã Phiếu", FillWeight = 10 });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "NgayNhap", HeaderText = "Ngày Nhập", FillWeight = 12 });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "NCC", HeaderText = "Nhà Cung Cấp", FillWeight = 20 });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "NguoiNhap", HeaderText = "Người Nhập", FillWeight = 14 });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "TongSoLuong", HeaderText = "Tổng SL Nhập", FillWeight = 12 });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "TongGiaTri", HeaderText = "Tổng Giá Trị", FillWeight = 14 });
+
+            // Cell formatting
+            dgv.CellFormatting += (s2, cf) =>
+            {
+                if (cf.RowIndex < 0) return;
+                string col = dgv.Columns[cf.ColumnIndex].Name;
+                if (col == "MaPhieu")
+                {
+                    cf.CellStyle.Font = AppFonts.Badge;
+                    cf.CellStyle.ForeColor = ColorScheme.PrimaryDark;
+                }
+                else if (col == "TongGiaTri")
+                {
+                    cf.CellStyle.Font = AppFonts.BodyBold;
+                    cf.CellStyle.ForeColor = ColorScheme.PrimaryDark;
+                }
+                else if (col == "TongSoLuong")
+                {
+                    cf.CellStyle.Font = AppFonts.BodyBold;
+                    cf.CellStyle.ForeColor = ColorScheme.TextMid;
+                }
+            };
+
+            int totalPhieu = 0;
+            int totalSL = 0;
+            decimal totalGiaTri = 0;
+
+            try
+            {
+                using (var conn = DatabaseConnection.GetConnection())
+                using (var cmd = new SqlCommand(@"
+                    SELECT pnk.MaPhieuNhap,
+                           FORMAT(pnk.NgayNhap, 'dd/MM/yyyy') AS NgayNhap,
+                           ISNULL(ncc.TenNhaCungCap, N'—') AS TenNCC,
+                           ISNULL(nd.HoTen, N'—') AS NguoiNhap,
+                           ISNULL(SUM(ct.SoLuong), 0) AS TongSoLuong,
+                           ISNULL(SUM(ct.SoLuong * ct.GiaNhap), 0) AS TongGiaTri
+                    FROM PhieuNhapKho pnk
+                    LEFT JOIN NhaCungCap ncc ON pnk.MaNhaCungCap = ncc.MaNhaCungCap
+                    LEFT JOIN NguoiDung nd ON pnk.MaNguoiDung = nd.MaNguoiDung
+                    LEFT JOIN ChiTietNhapKho ct ON pnk.MaPhieuNhap = ct.MaPhieuNhap
+                    GROUP BY pnk.MaPhieuNhap, pnk.NgayNhap, ncc.TenNhaCungCap, nd.HoTen
+                    ORDER BY pnk.NgayNhap DESC, pnk.MaPhieuNhap DESC", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string maPhieu = "PN#" + Convert.ToInt32(reader.GetValue(0)).ToString("D4");
+                        string ngayNhap = reader.GetString(1);
+                        string tenNCC = reader.GetString(2);
+                        string nguoiNhap = reader.GetString(3);
+                        int tongSL = Convert.ToInt32(reader.GetValue(4));
+                        decimal tongGiaTri = Convert.ToDecimal(reader.GetValue(5));
+
+                        dgv.Rows.Add(maPhieu, ngayNhap, tenNCC, nguoiNhap,
+                            tongSL.ToString("N0"), tongGiaTri.ToString("N0") + "đ");
+
+                        totalPhieu++;
+                        totalSL += tongSL;
+                        totalGiaTri += tongGiaTri;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi tải lịch sử: " + ex.Message, "Lỗi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            lblSummary.Text = $"📊  Tổng: {totalPhieu} phiếu  |  {totalSL:N0} sản phẩm  |  {totalGiaTri:N0}đ";
+
+            // Dock order: Fill first, then Top
+            frm.Controls.Add(dgv);
+            frm.Controls.Add(pnlSummary);
+            frm.Controls.Add(pnlHeader);
+            frm.ShowDialog(this);
+        }
+
         private void LoadComboData()
         {
             try
@@ -555,7 +788,7 @@ namespace DermaSoft.Forms
                     }
 
                     using (var cmd = new SqlCommand(
-                        "SELECT MaThuoc, TenThuoc + ' (' + DonViTinh + ')' FROM Thuoc ORDER BY TenThuoc", conn))
+                        "SELECT MaThuoc, TenThuoc + ' (' + DonViTinh + ')' FROM Thuoc WHERE IsDeleted = 0 ORDER BY TenThuoc", conn))
                     using (var reader = cmd.ExecuteReader())
                     {
                         _dsThuoc.Clear();

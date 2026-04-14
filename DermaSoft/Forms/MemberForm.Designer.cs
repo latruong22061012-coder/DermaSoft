@@ -1,4 +1,4 @@
-namespace DermaSoft.Forms
+﻿namespace DermaSoft.Forms
 {
     partial class MemberForm
     {
@@ -10,7 +10,6 @@ namespace DermaSoft.Forms
         }
         private void InitializeComponent()
         {
-<<<<<<< HEAD
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle9 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle10 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle11 = new System.Windows.Forms.DataGridViewCellStyle();
@@ -1139,16 +1138,5 @@ namespace DermaSoft.Forms
         private System.Windows.Forms.TableLayoutPanel tlpButtons;
         private Guna.UI2.WinForms.Guna2GradientButton btnDangKyThe;
         private Guna.UI2.WinForms.Guna2GradientButton btnHuyThe;
-=======
-            this.components = new System.ComponentModel.Container();
-            this.SuspendLayout();
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1060, 768);
-            this.Name = "MemberForm";
-            this.Text = "Quản lý thẻ thành viên";
-            this.ResumeLayout(false);
-        }
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
     }
 }

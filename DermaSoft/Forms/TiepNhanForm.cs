@@ -1,19 +1,14 @@
-<<<<<<< HEAD
-using System;
+﻿using System;
 using System.Data;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using DermaSoft.Data;
 using DermaSoft.Models;
-=======
-using System.Windows.Forms;
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
 
 namespace DermaSoft.Forms
 {
     /// <summary>
-<<<<<<< HEAD
     /// Form Tiếp Nhận Bệnh Nhân — Lễ Tân tìm BN, tạo PhieuKham từ LichHen.
     /// Luồng: Tìm BN theo SĐT → chọn Bác sĩ + Lịch hẹn → Tiếp nhận → INSERT PhieuKham.
     /// </summary>
@@ -33,6 +28,9 @@ namespace DermaSoft.Forms
         // KHỞI TẠO
         // ═════════════════════════════════════════════════════════════════════
 
+        // SĐT được truyền từ Dashboard để tự động tìm kiếm khi mở form
+        private string _sdtTuDashboard = null;
+
         public TiepNhanForm()
         {
             InitializeComponent();
@@ -46,32 +44,74 @@ namespace DermaSoft.Forms
             btnHuy.Click += BtnHuy_Click;
         }
 
+        /// <summary>
+        /// Constructor nhận SĐT từ Dashboard — tự động tìm bệnh nhân khi form load.
+        /// </summary>
+        public TiepNhanForm(string soDienThoai) : this()
+        {
+            _sdtTuDashboard = soDienThoai;
+        }
+
         private void TiepNhanForm_Load(object sender, EventArgs e)
         {
             LoadDanhSachBacSi();
             LoadQueue();
             DatCheDoBan(enabled: false);
+
+            // Nếu được mở từ Dashboard với SĐT, tự động tìm kiếm
+            if (!string.IsNullOrWhiteSpace(_sdtTuDashboard))
+            {
+                txtTimKiem.Text = _sdtTuDashboard;
+                TimKiemBenhNhan();
+            }
         }
 
         // ═════════════════════════════════════════════════════════════════════
         // LOAD DỮ LIỆU
         // ═════════════════════════════════════════════════════════════════════
 
-        /// <summary>Load danh sách bác sĩ đang hoạt động vào cmbBacSi.</summary>
+        /// <summary>
+        /// Load danh sách bác sĩ vào cmbBacSi.
+        /// Ưu tiên BS đang trực ca hôm nay + hiện tên ca, vẫn hiện BS khác.
+        /// </summary>
         private void LoadDanhSachBacSi()
         {
             try
             {
-                // Query đơn giản — tên bác sĩ không kèm ca
-                const string sqlSimple = @"
-                    SELECT MaNguoiDung, HoTen AS TenHienThi
-                    FROM NguoiDung
-                    WHERE MaVaiTro = 2
-                      AND TrangThaiTK = 1
-                      AND IsDeleted   = 0
-                    ORDER BY HoTen";
+                const string sql = @"
+                    SELECT
+                        nd.MaNguoiDung,
+                        nd.HoTen + ISNULL(
+                            N' — ' + (
+                                SELECT STRING_AGG(clv.TenCa, N', ')
+                                FROM PhanCongCa pcc
+                                JOIN CaLamViec clv ON pcc.MaCa = clv.MaCa
+                                WHERE pcc.MaNguoiDung = nd.MaNguoiDung
+                                  AND pcc.NgayLamViec = CAST(GETDATE() AS DATE)
+                            ),
+                            N' (Không có ca hôm nay)'
+                        ) AS TenHienThi,
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM PhanCongCa pcc2
+                            JOIN CaLamViec clv2 ON pcc2.MaCa = clv2.MaCa
+                            WHERE pcc2.MaNguoiDung = nd.MaNguoiDung
+                              AND pcc2.NgayLamViec = CAST(GETDATE() AS DATE)
+                              AND clv2.GioBatDau <= CAST(GETDATE() AS TIME)
+                              AND clv2.GioKetThuc >= CAST(GETDATE() AS TIME)
+                        ) THEN 0
+                        WHEN EXISTS (
+                            SELECT 1 FROM PhanCongCa pcc3
+                            WHERE pcc3.MaNguoiDung = nd.MaNguoiDung
+                              AND pcc3.NgayLamViec = CAST(GETDATE() AS DATE)
+                        ) THEN 1
+                        ELSE 2 END AS ThuTu
+                    FROM NguoiDung nd
+                    WHERE nd.MaVaiTro = 2
+                      AND nd.TrangThaiTK = 1
+                      AND nd.IsDeleted = 0
+                    ORDER BY ThuTu, nd.HoTen";
 
-                DataTable dt = DatabaseConnection.ExecuteQuery(sqlSimple);
+                DataTable dt = DatabaseConnection.ExecuteQuery(sql);
 
                 cmbBacSi.DataSource = dt;
                 cmbBacSi.DisplayMember = "TenHienThi";
@@ -132,6 +172,8 @@ namespace DermaSoft.Forms
         {
             try
             {
+                // Chỉ lấy lịch hẹn chưa được tiếp nhận (không có PhieuKham liên kết)
+                // TrangThai IN (0=Chờ XN, 1=Đã XN) và chưa bị chuyển sang Hoàn thành (2)
                 const string sql = @"
                     SELECT
                         lh.MaLichHen,
@@ -143,6 +185,10 @@ namespace DermaSoft.Forms
                     WHERE lh.MaBenhNhan = @MaBN
                       AND lh.TrangThai IN (0, 1)
                       AND CAST(lh.ThoiGianHen AS DATE) = CAST(GETDATE() AS DATE)
+                      AND NOT EXISTS (
+                            SELECT 1 FROM PhieuKham pk
+                            WHERE pk.MaLichHen = lh.MaLichHen
+                              AND pk.IsDeleted = 0)
                     ORDER BY lh.ThoiGianHen ASC";
 
                 DataTable dt = DatabaseConnection.ExecuteQuery(sql,
@@ -397,6 +443,19 @@ namespace DermaSoft.Forms
         {
             bool ok = DatabaseConnection.ExecuteTransaction((conn, tran) =>
             {
+                // 0. Kiểm tra lịch hẹn chưa bị tiếp nhận bởi phiếu khám khác (phòng trùng lặp)
+                if (maLichHen.HasValue)
+                {
+                    var cmdCheck = new System.Data.SqlClient.SqlCommand(@"
+                        SELECT COUNT(*) FROM PhieuKham
+                        WHERE MaLichHen = @MaLH AND IsDeleted = 0", conn, tran);
+                    cmdCheck.Parameters.AddWithValue("@MaLH", maLichHen.Value);
+                    int daTonTai = Convert.ToInt32(cmdCheck.ExecuteScalar());
+                    if (daTonTai > 0)
+                        throw new InvalidOperationException(
+                            "Lịch hẹn này đã được tiếp nhận trước đó. Không thể tạo phiếu khám trùng.");
+                }
+
                 // 1. INSERT PhieuKham
                 var cmdPK = new System.Data.SqlClient.SqlCommand(@"
                     INSERT INTO PhieuKham
@@ -413,11 +472,12 @@ namespace DermaSoft.Forms
 
                 int maPhieuKham = Convert.ToInt32(cmdPK.ExecuteScalar());
 
-                // 2. Cập nhật TrangThai LichHen → 2 (Hoàn thành) nếu có liên kết
+                // 2. Cập nhật TrangThai LichHen → 2 (Đã tiếp nhận) nếu có liên kết
+                //    TrangThai=2 đồng bộ với Dashboard + Website (Hoàn thành)
                 if (maLichHen.HasValue)
                 {
                     var cmdLH = new System.Data.SqlClient.SqlCommand(
-                        "UPDATE LichHen SET TrangThai = 1 WHERE MaLichHen = @MaLH",
+                        "UPDATE LichHen SET TrangThai = 2 WHERE MaLichHen = @MaLH",
                         conn, tran);
                     cmdLH.Parameters.AddWithValue("@MaLH", maLichHen.Value);
                     cmdLH.ExecuteNonQuery();
@@ -484,18 +544,10 @@ namespace DermaSoft.Forms
         private void label5_Click(object sender, EventArgs e) { }
         private void tableLayoutPanel1_Paint(object sender, PaintEventArgs e) { }
         private void guna2GradientButton1_Click(object sender, EventArgs e) => BtnTiepNhan_Click(sender, e);
-    }
-}
-=======
-    /// Form Tiếp Nhận Bệnh Nhân — frm-tiepnhan trong wireframe.
-    /// Lễ tân: tìm kiếm BenhNhan, tạo PhieuKham mới từ LichHen.
-    /// </summary>
-    public partial class TiepNhanForm : Form
-    {
-        public TiepNhanForm()
+
+        private void lblQueueBN_Click(object sender, EventArgs e)
         {
-            InitializeComponent();
+
         }
     }
 }
->>>>>>> d2fc9d190a76c0c366e0407bca6067fe95379af1
