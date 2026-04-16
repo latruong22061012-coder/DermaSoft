@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using DermaSoft.Data;
+using DermaSoft.Helpers;
 using DermaSoft.Theme;
 
 namespace DermaSoft.Forms
@@ -97,8 +98,11 @@ namespace DermaSoft.Forms
                 string avatar = r["DuongDanAvatar"]?.ToString();
                 if (!string.IsNullOrEmpty(avatar) && File.Exists(avatar))
                 {
-                    try { picAvatar.Image = Image.FromFile(avatar); }
-                    catch { SetDefaultAvatar(); }
+                    Image img = ImageHelper.LoadImageSafe(avatar);
+                    if (img != null)
+                        ImageHelper.SetImage(picAvatar, img);
+                    else
+                        SetDefaultAvatar();
                 }
                 else
                 {
@@ -128,6 +132,7 @@ namespace DermaSoft.Forms
                     g.DrawString(chu, f, br, (80 - sz.Width) / 2f, (80 - sz.Height) / 2f);
                 }
             }
+            picAvatar.Image?.Dispose();
             picAvatar.Image = bmp;
         }
 
@@ -407,6 +412,7 @@ namespace DermaSoft.Forms
                 DataTable dt = DatabaseConnection.ExecuteQuery(sql,
                     p => p.AddWithValue("@MaBN", _maBenhNhan));
 
+                ImageHelper.DisposeControlImages(flpHinhAnh);
                 flpHinhAnh.Controls.Clear();
 
                 if (dt == null || dt.Rows.Count == 0)
@@ -431,7 +437,10 @@ namespace DermaSoft.Forms
                     var pic = new PictureBox { Size = new Size(160, 140), Location = new Point(0, 0), SizeMode = PictureBoxSizeMode.Zoom, BackColor = Color.FromArgb(240, 250, 245) };
 
                     if (!string.IsNullOrEmpty(duongDan) && File.Exists(duongDan))
-                        try { pic.Image = Image.FromFile(duongDan); } catch { }
+                    {
+                        Image img = ImageHelper.LoadImageSafe(duongDan);
+                        if (img != null) pic.Image = img;
+                    }
 
                     var lblInfo = new Label
                     {
@@ -463,11 +472,14 @@ namespace DermaSoft.Forms
         private void MoAnhLon(string duongDan)
         {
             if (string.IsNullOrEmpty(duongDan) || !File.Exists(duongDan)) return;
+            Image img = ImageHelper.LoadImageSafe(duongDan);
+            if (img == null) return;
             var frm = new Form { Text = "Hình Ảnh Bệnh Lý", StartPosition = FormStartPosition.CenterScreen, Size = new Size(800, 600), BackColor = Color.Black };
             var pic = new PictureBox { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Color.Black };
-            try { pic.Image = Image.FromFile(duongDan); } catch { frm.Close(); return; }
+            pic.Image = img;
             frm.Controls.Add(pic);
             frm.ShowDialog(this);
+            pic.Image?.Dispose();
         }
 
         // ══════════════════════════════════════════════════════════════════════

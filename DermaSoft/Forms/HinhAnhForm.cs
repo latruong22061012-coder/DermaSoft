@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using DermaSoft.Data;
+using DermaSoft.Helpers;
 
 namespace DermaSoft.Forms
 {
@@ -107,23 +108,21 @@ namespace DermaSoft.Forms
 
         private void CapNhatThumbnails(DataTable dt)
         {
-            // Reset
-            picThumb1.Image = null;
-            picThumb2.Image = null;
+            // Dispose ảnh cũ trước khi gán mới
+            ImageHelper.SetImage(picThumb1, null);
+            ImageHelper.SetImage(picThumb2, null);
 
             if (dt == null || dt.Rows.Count == 0) return;
 
             // Thumb 1
             string path1 = dt.Rows[0]["DuongDanAnh"]?.ToString();
-            if (!string.IsNullOrEmpty(path1) && File.Exists(path1))
-                try { picThumb1.Image = Image.FromFile(path1); } catch { }
+            ImageHelper.SetImage(picThumb1, ImageHelper.LoadImageSafe(path1));
 
             if (dt.Rows.Count < 2) return;
 
             // Thumb 2
             string path2 = dt.Rows[1]["DuongDanAnh"]?.ToString();
-            if (!string.IsNullOrEmpty(path2) && File.Exists(path2))
-                try { picThumb2.Image = Image.FromFile(path2); } catch { }
+            ImageHelper.SetImage(picThumb2, ImageHelper.LoadImageSafe(path2));
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -284,9 +283,7 @@ namespace DermaSoft.Forms
 
             // Load preview
             string path = r["DuongDanAnh"]?.ToString();
-            picPreview.Image = null;
-            if (!string.IsNullOrEmpty(path) && File.Exists(path))
-                try { picPreview.Image = Image.FromFile(path); } catch { }
+            ImageHelper.SetImage(picPreview, ImageHelper.LoadImageSafe(path));
 
             // Load ghi chú vào txtGhiChuAnh
             txtGhiChuAnh.Text = r["GhiChu"] != DBNull.Value

@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using DermaSoft.Data;
+using DermaSoft.Helpers;
 using DermaSoft.Theme;
 using Guna.UI2.WinForms;
 
@@ -1622,6 +1623,7 @@ namespace DermaSoft.Forms
             Action loadAnh = null;
             loadAnh = () =>
             {
+                ImageHelper.DisposeControlImages(flowAnh);
                 flowAnh.Controls.Clear();
                 DataTable dtAnh = DatabaseConnection.ExecuteQuery(@"
                     SELECT MaHinhAnh, DuongDanAnh,
@@ -1672,8 +1674,11 @@ namespace DermaSoft.Forms
 
                     if (System.IO.File.Exists(duongDan))
                     {
-                        try { pic.Image = Image.FromFile(duongDan); }
-                        catch { pic.BackColor = Color.FromArgb(229, 231, 235); }
+                        Image img = ImageHelper.LoadImageSafe(duongDan);
+                        if (img != null)
+                            pic.Image = img;
+                        else
+                            pic.BackColor = Color.FromArgb(229, 231, 235);
                     }
                     else
                     {

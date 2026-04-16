@@ -217,6 +217,7 @@
       <DependentUpon>TonKhoForm.cs</DependentUpon>
     </Compile>
     <Compile Include="DermaSoft\Helpers\DoubleBufferHelper.cs" />
+    <Compile Include="DermaSoft\Helpers\ImageHelper.cs" />
     <Compile Include="DermaSoft\Models\AppointmentModel.cs" />
     <Compile Include="DermaSoft\Models\InvoiceModel.cs" />
     <Compile Include="DermaSoft\Models\MemberModel.cs" />
