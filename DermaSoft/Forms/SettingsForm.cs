@@ -22,8 +22,7 @@ namespace DermaSoft.Forms
         private Guna2TextBox txtTenPK, txtDiaChi, txtSDT, txtEmail, txtWebsite, txtSlogan;
         // 2. Giờ làm việc
         private Guna2TextBox txtGioMo, txtGioDong, txtLichTuan;
-        // 3. Ngưỡng cảnh báo kho
-        private Guna2TextBox txtNguongThap, txtNguongNguyHiem;
+        // 3. Ngưỡng cảnh báo kho (managed in TaoSection3_CanhBaoKho)
         // 4. Mật khẩu mặc định
         private Guna2TextBox txtMKMacDinh;
         // 5. Sao lưu DB
@@ -86,26 +85,26 @@ namespace DermaSoft.Forms
 
             // Tính chiều cao khả dụng cho 2 cột (trừ header + padding)
             int availH = Math.Max(500, pnlContent.ClientSize.Height - y - pad);
-            // Cột trái: 3 card tỷ lệ 46% / 26% / 28%
+            // Cột trái: S1(ThôngTinPK 46%) + S4(MậtKhẩu 22%) + S5(SaoLưu 32%)
             int s1H = (int)(availH * 0.46);
-            int s3H = (int)(availH * 0.26);
-            int s5H = availH - s1H - s3H - gap * 2;
-            // Cột phải: 3 card tỷ lệ 36% / 26% / 38%
-            int s2H = (int)(availH * 0.36);
-            int s4H = (int)(availH * 0.26);
-            int s6H = availH - s2H - s4H - gap * 2;
+            int s4H = (int)(availH * 0.22);
+            int s5H = availH - s1H - s4H - gap * 2;
+            // Cột phải: S2(GiờLV 26%) + S3(NgưỡngKho 46%) + S6(KếtNối 28%)
+            int s2H = (int)(availH * 0.26);
+            int s3H = (int)(availH * 0.46);
+            int s6H = availH - s2H - s3H - gap * 2;
 
-            // Cột trái
+            // Cột trái: S1 → S4 → S5
             int yL = y;
             TaoSection1_ThongTinPK(pad, yL, colW, s1H); yL += s1H + gap;
-            TaoSection3_CanhBaoKho(pad, yL, colW, s3H); yL += s3H + gap;
+            TaoSection4_MatKhauMacDinh(pad, yL, colW, s4H); yL += s4H + gap;
             TaoSection5_SaoLuuDB(pad, yL, colW, s5H);
 
-            // Cột phải
+            // Cột phải: S2 → S3 → S6
             int yR = y;
             int xR = pad + colW + gap;
             TaoSection2_GioLamViec(xR, yR, colW, s2H); yR += s2H + gap;
-            TaoSection4_MatKhauMacDinh(xR, yR, colW, s4H); yR += s4H + gap;
+            TaoSection3_CanhBaoKho(xR, yR, colW, s3H); yR += s3H + gap;
             TaoSection6_KiemTraKetNoi(xR, yR, colW, s6H);
 
             // Load dữ liệu
@@ -240,50 +239,156 @@ namespace DermaSoft.Forms
         // SECTION 3: NGƯỠNG CẢNH BÁO KHO
         // ══════════════════════════════════════════
 
+        private DataGridView _dgvNguong;
+        private Guna2ComboBox _cboThemDVT;
+
         private void TaoSection3_CanhBaoKho(int x, int y, int w, int cardH)
         {
             var card = TaoCard(x, y, w, cardH);
             int cy = 16, cx = 16;
             int inputW = w - 32;
-            int halfW = (inputW - 10) / 2;
 
-            card.Controls.Add(TaoSectionTitle("📦  Ngưỡng Cảnh Báo Tồn Kho", cx, cy));
+            card.Controls.Add(TaoSectionTitle("📦  Ngưỡng Cảnh Báo Tồn Kho Theo Đơn Vị", cx, cy));
             cy += 32;
 
-            card.Controls.Add(TaoLabel("Mức Thấp (≤)", cx, cy));
-            card.Controls.Add(TaoLabel("Mức Nguy hiểm (≤)", cx + halfW + 10, cy));
-            cy += 18;
-            txtNguongThap = TaoInput(cx, cy, halfW, "10");
-            txtNguongThap.Text = AppSettings.NguongThap.ToString();
-            card.Controls.Add(txtNguongThap);
-            txtNguongNguyHiem = TaoInput(cx + halfW + 10, cy, halfW, "3");
-            txtNguongNguyHiem.Text = AppSettings.NguongNguyHiem.ToString();
-            card.Controls.Add(txtNguongNguyHiem);
+            card.Controls.Add(TaoLabel("Mỗi đơn vị tính có ngưỡng riêng (VD: Viên > Chai)", cx, cy));
+            cy += 22;
+
+            // DataGridView ngưỡng theo đơn vị
+            int dgvH = cardH - cy - 90;
+            if (dgvH < 80) dgvH = 80;
+
+            _dgvNguong = new DataGridView
+            {
+                Location = new Point(cx, cy),
+                Size = new Size(inputW, dgvH),
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                GridColor = ColorScheme.Border,
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                ColumnHeadersHeight = 32,
+                RowTemplate = { Height = 30 },
+                EnableHeadersVisualStyles = false,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Font = AppFonts.Body,
+                    ForeColor = ColorScheme.TextDark,
+                    SelectionBackColor = ColorScheme.PrimaryPale,
+                    SelectionForeColor = ColorScheme.TextDark,
+                },
+                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Font = AppFonts.BodyBold,
+                    ForeColor = ColorScheme.TextMid,
+                    BackColor = Color.FromArgb(249, 250, 251),
+                },
+            };
+            _dgvNguong.AutoGenerateColumns = false;
+            _dgvNguong.Columns.Add(new DataGridViewTextBoxColumn { Name = "colDVT", HeaderText = "Đơn vị tính", ReadOnly = true, FillWeight = 35 });
+            _dgvNguong.Columns.Add(new DataGridViewTextBoxColumn { Name = "colThap", HeaderText = "Mức Thấp (≤)", FillWeight = 30 });
+            _dgvNguong.Columns.Add(new DataGridViewTextBoxColumn { Name = "colNguy", HeaderText = "Mức Nguy hiểm (≤)", FillWeight = 35 });
+
+            LoadDgvNguong();
+            card.Controls.Add(_dgvNguong);
+            cy += dgvH + 6;
+
+            // Thêm đơn vị tính mới
+            int addW = (inputW - 10) / 2;
+            _cboThemDVT = new Guna2ComboBox
+            {
+                Location = new Point(cx, cy),
+                Size = new Size(addW, 36),
+                Font = AppFonts.Body,
+                FillColor = InputBg,
+                BorderColor = BorderInput,
+                BorderRadius = 8,
+                DropDownStyle = ComboBoxStyle.DropDown,
+            };
+            _cboThemDVT.Items.AddRange(new object[] { "Viên", "Chai", "Tuýp", "Lọ", "Hộp", "Ống", "Gói", "Vỉ", "Túi", "Cuộn" });
+            card.Controls.Add(_cboThemDVT);
+
+            var btnThem = TaoBtnPrimary("➕ Thêm ĐVT", cx + addW + 10, cy, addW);
+            btnThem.Click += (s, e) =>
+            {
+                string dvt = _cboThemDVT.Text.Trim();
+                if (string.IsNullOrEmpty(dvt)) return;
+
+                // Kiểm tra trùng
+                foreach (DataGridViewRow row in _dgvNguong.Rows)
+                    if (row.Cells["colDVT"].Value?.ToString() == dvt) { _cboThemDVT.Text = ""; return; }
+
+                int[] macDinh = AppSettings.NguongMacDinhTheoDonVi.ContainsKey(dvt)
+                    ? AppSettings.NguongMacDinhTheoDonVi[dvt]
+                    : new[] { AppSettings.NguongThap, AppSettings.NguongNguyHiem };
+                _dgvNguong.Rows.Add(dvt, macDinh[0].ToString(), macDinh[1].ToString());
+                _cboThemDVT.Text = "";
+            };
+            card.Controls.Add(btnThem);
             cy += 42;
 
             var btnLuu3 = TaoBtnPrimary("💾 Lưu Ngưỡng", cx, cy, inputW);
-            btnLuu3.Click += (s, e) =>
-            {
-                int valThap, valNguy;
-                if (!int.TryParse(txtNguongThap.Text.Trim(), out valThap) || valThap < 0)
-                {
-                    MessageBox.Show("Mức Thấp phải là số nguyên ≥ 0.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                if (!int.TryParse(txtNguongNguyHiem.Text.Trim(), out valNguy) || valNguy < 0)
-                {
-                    MessageBox.Show("Mức Nguy hiểm phải là số nguyên ≥ 0.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                AppSettings.NguongThap = valThap;
-                AppSettings.NguongNguyHiem = valNguy;
-                AppSettings.Save();
-                MessageBox.Show("Đã lưu ngưỡng cảnh báo kho!\n• Thấp: ≤ " + valThap + "\n• Nguy hiểm: ≤ " + valNguy,
-                    "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            };
+            btnLuu3.Click += BtnLuuNguong_Click;
             card.Controls.Add(btnLuu3);
 
             pnlContent.Controls.Add(card);
+        }
+
+        private void LoadDgvNguong()
+        {
+            if (_dgvNguong == null) return;
+            _dgvNguong.Rows.Clear();
+
+            var dsDVT = AppSettings.LayTatCaDonViTinh();
+            foreach (string dvt in dsDVT)
+            {
+                int[] nguong = AppSettings.LayNguong(dvt);
+                _dgvNguong.Rows.Add(dvt, nguong[0].ToString(), nguong[1].ToString());
+            }
+        }
+
+        private void BtnLuuNguong_Click(object sender, EventArgs e)
+        {
+            int count = 0;
+            foreach (DataGridViewRow row in _dgvNguong.Rows)
+            {
+                if (row.IsNewRow) continue;
+                string dvt = row.Cells["colDVT"].Value?.ToString() ?? "";
+                if (string.IsNullOrEmpty(dvt)) continue;
+
+                int valThap, valNguy;
+                if (!int.TryParse(row.Cells["colThap"].Value?.ToString(), out valThap) || valThap < 0)
+                {
+                    MessageBox.Show($"Mức Thấp của \"{dvt}\" phải là số nguyên ≥ 0.", "Lỗi",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if (!int.TryParse(row.Cells["colNguy"].Value?.ToString(), out valNguy) || valNguy < 0)
+                {
+                    MessageBox.Show($"Mức Nguy hiểm của \"{dvt}\" phải là số nguyên ≥ 0.", "Lỗi",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                AppSettings.LuuNguongDonVi(dvt, valThap, valNguy);
+                count++;
+            }
+
+            // Cập nhật fallback mặc định (dùng giá trị đầu tiên hoặc giữ nguyên)
+            AppSettings.Save();
+
+            string msg = $"✅ Đã lưu ngưỡng cho {count} đơn vị tính!\n\n";
+            foreach (DataGridViewRow row in _dgvNguong.Rows)
+            {
+                if (row.IsNewRow) continue;
+                string dvt = row.Cells["colDVT"].Value?.ToString() ?? "";
+                msg += $"• {dvt}: Thấp ≤ {row.Cells["colThap"].Value}, Nguy hiểm ≤ {row.Cells["colNguy"].Value}\n";
+            }
+            MessageBox.Show(msg, "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // ══════════════════════════════════════════

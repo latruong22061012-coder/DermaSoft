@@ -633,6 +633,22 @@ namespace DermaSoft.Forms
 
                 // UPDATE TrangThai = 1 → Trigger TRG_HoaDon_CapPhatDiem sẽ tự chạy
                 // và cộng điểm thưởng cho thành viên
+                // Trước tiên: tự động mở thẻ thành viên nếu BN chưa có
+                var cmdAutoMember = new SqlCommand(@"
+                    IF NOT EXISTS (
+                        SELECT 1 FROM ThanhVienInfo tvi
+                        JOIN PhieuKham pk ON tvi.MaBenhNhan = pk.MaBenhNhan
+                        WHERE pk.MaPhieuKham = @MaPK
+                    )
+                    BEGIN
+                        INSERT INTO ThanhVienInfo (MaBenhNhan, MaHang, DiemTichLuy, SoLanKham)
+                        SELECT pk.MaBenhNhan, 1, 0, 0
+                        FROM PhieuKham pk
+                        WHERE pk.MaPhieuKham = @MaPK
+                    END", conn, tran);
+                cmdAutoMember.Parameters.AddWithValue("@MaPK", _maPhieuKhamDangChon);
+                cmdAutoMember.ExecuteNonQuery();
+
                 var cmdUpHD = new SqlCommand(
                     "UPDATE HoaDon SET TrangThai = 1 WHERE MaHoaDon = @MaHD",
                     conn, tran);

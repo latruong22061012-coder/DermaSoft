@@ -49,6 +49,10 @@
     <Compile Include="DermaSoft\Forms\AppointmentForm.Designer.cs">
       <DependentUpon>AppointmentForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="DermaSoft\Forms\BangLuongForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\BangLuongForm.Designer.cs" />
     <Compile Include="DermaSoft\Forms\BaoCaoDoanhThuForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -67,6 +71,10 @@
     <Compile Include="DermaSoft\Forms\BenhNhanDetailForm.Designer.cs">
       <DependentUpon>BenhNhanDetailForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="DermaSoft\Forms\CauHinhLuongForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\CauHinhLuongForm.Designer.cs" />
     <Compile Include="DermaSoft\Forms\ChangePasswordForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -164,6 +172,7 @@
     <Compile Include="DermaSoft\Forms\PhieuKhamForm.Designer.cs">
       <DependentUpon>PhieuKhamForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="DermaSoft\Forms\PhieuLuongPrinter.cs" />
     <Compile Include="DermaSoft\Forms\ProfileForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -307,6 +316,7 @@
     <Content Include="DermaSoft\Data\05_Constraints.sql" />
     <Content Include="DermaSoft\Data\05_SeedTestData.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_APPLY_FIXES.sql" />
+    <Content Include="DermaSoft\Data\MIGRATION_BANGLUONG.sql" />
     <Content Include="ENUM_COMPLETION_REPORT.txt" />
     <None Include="Resources\logo.png" />
     <None Include="Resources\logo1.png" />

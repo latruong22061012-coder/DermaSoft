@@ -40,6 +40,7 @@ namespace DermaSoft.Forms
             btnBNMoi.Click += BtnBNMoi_Click;
             txtTimKiem.KeyDown += TxtTimKiem_KeyDown;
             cmbBacSi.SelectedIndexChanged += CmbBacSi_SelectedIndexChanged;
+            cmbLichHen.SelectedIndexChanged += CmbLichHen_SelectedIndexChanged;
             btnTiepNhan.Click += BtnTiepNhan_Click;
             btnHuy.Click += BtnHuy_Click;
         }
@@ -177,11 +178,14 @@ namespace DermaSoft.Forms
                 const string sql = @"
                     SELECT
                         lh.MaLichHen,
+                        lh.MaNguoiDung,
                         N'LH#' + CAST(lh.MaLichHen AS NVARCHAR(10))
                             + N' - ' + FORMAT(lh.ThoiGianHen, N'HH:mm')
-                            + N' ' + ISNULL(bn.HoTen, N'')           AS TenHienThi
+                            + N' ' + ISNULL(bn.HoTen, N'')
+                            + ISNULL(N' → BS: ' + nd.HoTen, N'')  AS TenHienThi
                     FROM LichHen lh
                     JOIN BenhNhan bn ON lh.MaBenhNhan = bn.MaBenhNhan
+                    LEFT JOIN NguoiDung nd ON lh.MaNguoiDung = nd.MaNguoiDung
                     WHERE lh.MaBenhNhan = @MaBN
                       AND lh.TrangThai IN (0, 1)
                       AND CAST(lh.ThoiGianHen AS DATE) = CAST(GETDATE() AS DATE)
@@ -197,13 +201,14 @@ namespace DermaSoft.Forms
                 // Thêm option "Không có lịch hẹn" ở đầu
                 DataRow row = dt.NewRow();
                 row["MaLichHen"] = -1;
+                row["MaNguoiDung"] = DBNull.Value;
                 row["TenHienThi"] = "-- Không có lịch hẹn --";
                 dt.Rows.InsertAt(row, 0);
 
                 cmbLichHen.DataSource = dt;
                 cmbLichHen.DisplayMember = "TenHienThi";
                 cmbLichHen.ValueMember = "MaLichHen";
-                cmbLichHen.SelectedIndex = 0;
+                cmbLichHen.SelectedIndex = dt.Rows.Count > 1 ? 1 : 0;
             }
             catch
             {
@@ -312,6 +317,9 @@ namespace DermaSoft.Forms
             // Điền txtBenhNhanDisplay bên phải
             txtBenhNhanDisplay.Text = lblBNTen.Text;
 
+            // Reload danh sách bác sĩ (cập nhật ca hiện tại)
+            LoadDanhSachBacSi();
+
             // Load lịch hẹn của BN này
             LoadLichHenCuaBN(_maBNDangChon);
             DatCheDoBan(enabled: true);
@@ -384,6 +392,28 @@ namespace DermaSoft.Forms
         // ═════════════════════════════════════════════════════════════════════
 
         private void CmbBacSi_SelectedIndexChanged(object sender, EventArgs e) { }
+
+        /// <summary>
+        /// Khi chọn lịch hẹn có bác sĩ yêu cầu → tự động set cmbBacSi theo bác sĩ đó.
+        /// </summary>
+        private void CmbLichHen_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cmbLichHen.SelectedValue == null) return;
+            if (!int.TryParse(cmbLichHen.SelectedValue.ToString(), out int maLH) || maLH <= 0) return;
+
+            // Lấy MaNguoiDung từ row đang chọn
+            var drv = cmbLichHen.SelectedItem as DataRowView;
+            if (drv == null) return;
+
+            object maBSObj = drv["MaNguoiDung"];
+            if (maBSObj == null || maBSObj == DBNull.Value) return;
+
+            int maBacSiYeuCau = Convert.ToInt32(maBSObj);
+            if (maBacSiYeuCau <= 0) return;
+
+            // Set cmbBacSi theo bác sĩ yêu cầu trong lịch hẹn
+            cmbBacSi.SelectedValue = maBacSiYeuCau;
+        }
 
         // ═════════════════════════════════════════════════════════════════════
         // TIẾP NHẬN & TẠO PHIẾU KHÁM

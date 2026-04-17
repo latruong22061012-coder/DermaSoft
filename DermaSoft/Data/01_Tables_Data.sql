@@ -219,6 +219,70 @@ CREATE TABLE HoaDon (
     FOREIGN KEY (MaPhieuKham) REFERENCES PhieuKham(MaPhieuKham)
 );
 
+-- BẢNG CẤU HÌNH LƯƠNG THEO VAI TRÒ
+CREATE TABLE CauHinhLuong (
+    MaCauHinh       INT IDENTITY(1,1) PRIMARY KEY,
+    MaVaiTro        INT            NOT NULL,
+    LoaiTinhLuong   NVARCHAR(20)   NOT NULL,        -- 'THEO_BN' | 'THEO_GIO' | 'THEO_THANG'
+    DonGia          DECIMAL(18,2)  NOT NULL,         -- 250k/BN | 50k/giờ | 25tr/tháng
+    HeSoTangCa      DECIMAL(3,1)   DEFAULT 1.5,     -- Hệ số nhân tăng ca
+    HeSoNgayLe      DECIMAL(3,1)   DEFAULT 2.0,     -- Hệ số ngày lễ/nghỉ
+    SoGioChuanNgay  INT            DEFAULT 8,        -- Ngưỡng giờ/ngày (vượt = tăng ca)
+    SoCaChuanNgay   INT            DEFAULT 2,        -- Ngưỡng ca/ngày
+    NgayHieuLuc     DATE           NOT NULL,         -- Ngày áp dụng
+    GhiChu          NVARCHAR(255),
+    FOREIGN KEY (MaVaiTro) REFERENCES VaiTro(MaVaiTro)
+);
+
+-- BẢNG LƯƠNG THÁNG TỪNG NHÂN VIÊN
+CREATE TABLE BangLuong (
+    MaBangLuong    INT IDENTITY(1,1) PRIMARY KEY,
+    MaNguoiDung    INT            NOT NULL,
+    MaVaiTro       INT            NOT NULL,          -- Snapshot vai trò tại thời điểm tính
+    ThangNam       DATE           NOT NULL,           -- Luôn ngày 1 (VD: 2026-04-01)
+    LoaiTinhLuong  NVARCHAR(20)   NOT NULL,
+    DonGia         DECIMAL(18,2)  NOT NULL,           -- Snapshot từ CauHinhLuong
+    HeSoTangCa     DECIMAL(3,1)   DEFAULT 1.5,
+    -- Số liệu Bác Sĩ
+    SoBenhNhan     INT            DEFAULT 0,          -- BN hoàn thành trong ca
+    SoBNTangCa     INT            DEFAULT 0,          -- BN hoàn thành ngoài ca
+    -- Số liệu Lễ Tân
+    SoGioLam       DECIMAL(10,2)  DEFAULT 0,          -- Giờ thường
+    SoGioTangCa    DECIMAL(10,2)  DEFAULT 0,          -- Giờ vượt ngưỡng/ngày
+    -- Chuyên cần
+    SoCaDiemDanh   INT            DEFAULT 0,
+    SoCaVang       INT            DEFAULT 0,
+    -- Tiền
+    LuongChinh     DECIMAL(18,2)  DEFAULT 0,
+    LuongTangCa    DECIMAL(18,2)  DEFAULT 0,
+    ThuongThem     DECIMAL(18,2)  DEFAULT 0,          -- Admin nhập tay
+    KhauTru        DECIMAL(18,2)  DEFAULT 0,          -- Admin nhập tay
+    TongLuong      DECIMAL(18,2)  DEFAULT 0,
+    -- Trạng thái
+    GhiChu         NVARCHAR(500),
+    TrangThai      TINYINT        DEFAULT 0,          -- 0=Nháp, 1=Đã duyệt, 2=Đã thanh toán
+    NgayTao        DATETIME       DEFAULT GETDATE(),
+    NguoiDuyet     INT            NULL,
+    NgayDuyet      DATETIME       NULL,
+    FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung),
+    FOREIGN KEY (MaVaiTro)    REFERENCES VaiTro(MaVaiTro),
+    FOREIGN KEY (NguoiDuyet)  REFERENCES NguoiDung(MaNguoiDung),
+    CONSTRAINT UQ_BangLuong_NV_Thang UNIQUE (MaNguoiDung, ThangNam)
+);
+
+-- LỊCH SỬ THANH TOÁN LƯƠNG
+CREATE TABLE LichSuTraLuong (
+    MaTraLuong   INT IDENTITY(1,1) PRIMARY KEY,
+    MaBangLuong  INT            NOT NULL,
+    SoTienTra    DECIMAL(18,2)  NOT NULL,
+    PhuongThuc   NVARCHAR(50),                       -- 'Tiền mặt' | 'Chuyển khoản'
+    NgayTra      DATETIME       DEFAULT GETDATE(),
+    NguoiTra     INT            NOT NULL,
+    GhiChu       NVARCHAR(255),
+    FOREIGN KEY (MaBangLuong) REFERENCES BangLuong(MaBangLuong),
+    FOREIGN KEY (NguoiTra)    REFERENCES NguoiDung(MaNguoiDung)
+);
+
 -- ============================================================
 -- PHẦN 5: NHÓM 5 - HỆ THỐNG THÀNH VIÊN & XÁC THỰC
 -- ============================================================
@@ -359,6 +423,14 @@ CREATE TABLE LichHen_Notification (
 INSERT INTO VaiTro (TenVaiTro) VALUES (N'Admin');
 INSERT INTO VaiTro (TenVaiTro) VALUES (N'Bác Sĩ');
 INSERT INTO VaiTro (TenVaiTro) VALUES (N'Lễ Tân');
+GO
+
+-- Tạo CauHinhLuong (đơn giá theo vai trò)
+INSERT INTO CauHinhLuong (MaVaiTro, LoaiTinhLuong, DonGia, HeSoTangCa, HeSoNgayLe, SoGioChuanNgay, SoCaChuanNgay, NgayHieuLuc, GhiChu)
+VALUES
+(1, 'THEO_THANG', 25000000, 1.0, 1.0, 0, 0, '2026-04-01', N'Admin — lương cố định 25tr/tháng'),
+(2, 'THEO_BN',       250000, 1.5, 2.0, 8, 2, '2026-04-01', N'Bác Sĩ — 250k/BN hoàn thành, tăng ca ×1.5'),
+(3, 'THEO_GIO',       50000, 1.5, 2.0, 8, 2, '2026-04-01', N'Lễ Tân — 50k/giờ, tăng ca ×1.5');
 GO
 
 -- Tạo HangThanhVien (bao gồm khuyến mãi theo hạng)

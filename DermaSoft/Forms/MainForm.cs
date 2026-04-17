@@ -110,6 +110,8 @@ namespace DermaSoft.Forms
                 y = ThemSectionLabel("Nh\u00e2n S\u1ef1 & Ca", y);
                 y = ThemMenuItem("\uD83D\uDC65", "Nh\u00e2n Vi\u00ean", y);
                 y = ThemMenuItem("\uD83D\uDCC5", "Ph\u00e2n C\u00f4ng Ca", y);
+                y = ThemMenuItem("\uD83D\uDCB0", "B\u1ea3ng L\u01b0\u01a1ng", y);
+                y = ThemMenuItem("\u2699", "C\u1ea5u H\u00ecnh L\u01b0\u01a1ng", y);
 
                 y = ThemSectionLabel("Kho & Thu\u1ed1c", y);
                 y = ThemMenuItem("\uD83D\uDC8A", "Danh M\u1ee5c Thu\u1ed1c", y);
@@ -294,6 +296,8 @@ namespace DermaSoft.Forms
                 case "Phi\u1ebfu Kh\u00e1m":          frm = new PhieuKhamForm(); break;
                 case "B\u1ec7nh Nh\u00e2n":           frm = new PatientForm(); break;
                 case "Qu\u1ea3n L\u00fd H\u00f3a \u0110\u01a1n":  frm = new QuanLyHoaDonForm(); break;
+                case "B\u1ea3ng L\u01b0\u01a1ng":        frm = new BangLuongForm(); break;
+                case "C\u1ea5u H\u00ecnh L\u01b0\u01a1ng":    frm = new CauHinhLuongForm(); break;
             }
 
             DoubleBufferHelper.NhungFormCon(pnlMdiArea, frm);

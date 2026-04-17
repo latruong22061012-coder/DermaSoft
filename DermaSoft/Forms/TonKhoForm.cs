@@ -286,14 +286,15 @@ namespace DermaSoft.Forms
             dgvTonKho.CellFormatting += DgvTonKho_CellFormatting;
 
             // Columns
-            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "TenThuoc", HeaderText = "Thuốc", FillWeight = 22 });
+            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "TenThuoc", HeaderText = "Thuốc", FillWeight = 20 });
+            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "DonVi", HeaderText = "Đơn vị", FillWeight = 8 });
             dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "LoNhap", HeaderText = "Lô Nhập", FillWeight = 10 });
-            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "NgayNhap", HeaderText = "Ngày Nhập", FillWeight = 12 });
+            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "NgayNhap", HeaderText = "Ngày Nhập", FillWeight = 11 });
             dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "HanSD", HeaderText = "Hạn SD", FillWeight = 10 });
-            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "ConLai", HeaderText = "Còn lại (Ngày)", FillWeight = 12 });
-            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "SLTon", HeaderText = "SL Tồn", FillWeight = 9 });
-            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "UuTien", HeaderText = "Ưu Tiên (FEFO)", FillWeight = 11 });
-            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "TrangThai", HeaderText = "Trạng Thái", FillWeight = 14 });
+            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "ConLai", HeaderText = "Còn lại (Ngày)", FillWeight = 11 });
+            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "SLTon", HeaderText = "SL Tồn", FillWeight = 8 });
+            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "UuTien", HeaderText = "Ưu Tiên (FEFO)", FillWeight = 10 });
+            dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "TrangThai", HeaderText = "Trạng Thái", FillWeight = 12 });
 
             // Hidden
             dgvTonKho.Columns.Add(new DataGridViewTextBoxColumn { Name = "TrangThaiRaw", Visible = false });
@@ -476,7 +477,8 @@ namespace DermaSoft.Forms
                                  WHEN DATEDIFF(DAY, GETDATE(), ctk.HanSuDung) < 30 THEN N'Sắp hết hạn'
                                  WHEN DATEDIFF(DAY, GETDATE(), ctk.HanSuDung) < 90 THEN N'Cảnh báo'
                                  ELSE N'Bình thường'
-                             END AS TrangThaiHetHan
+                             END AS TrangThaiHetHan,
+                             t.DonViTinh
                       FROM Thuoc t
                       INNER JOIN ChiTietNhapKho ctk ON t.MaThuoc = ctk.MaThuoc
                       INNER JOIN PhieuNhapKho pnk ON ctk.MaPhieuNhap = pnk.MaPhieuNhap
@@ -494,6 +496,12 @@ namespace DermaSoft.Forms
                         int slTon = Convert.ToInt32(reader.GetValue(5));
                         long fefo = Convert.ToInt64(reader.GetValue(6));
                         string trangThai = reader.GetString(7);
+                        string donViTinh = reader.GetString(8);
+
+                        // Lấy ngưỡng theo đơn vị tính
+                        int[] nguong = AppSettings.LayNguong(donViTinh);
+                        int nguongThap = nguong[0];
+                        int nguongNguyHiem = nguong[1];
 
                         string loNhap = "PN#" + maPhieu.ToString("D4");
                         string ngayNhapStr = ngayNhap.ToString("dd/MM/yyyy");
@@ -509,23 +517,23 @@ namespace DermaSoft.Forms
                         else if (trangThai.Contains("Cảnh báo")) { trangThaiIcon = "⚠️ " + trangThai; }
                         else { trangThaiIcon = "✅ " + trangThai; cntBinhThuong++; }
 
-                        // Ghi đè trạng thái nếu tồn kho thấp (ưu tiên hiển thị)
-                        if (slTon <= AppSettings.NguongNguyHiem)
+                        // Ghi đè trạng thái nếu tồn kho thấp (theo ngưỡng của đơn vị tính)
+                        if (slTon <= nguongNguyHiem)
                         {
-                            trangThaiIcon = "🚨 Nguy hiểm (" + slTon + ")";
+                            trangThaiIcon = "🚨 Nguy hiểm (" + slTon + " " + donViTinh + ")";
                             trangThaiDisplay = "Tồn thấp";
                             cntTonThap++;
                         }
-                        else if (slTon <= AppSettings.NguongThap)
+                        else if (slTon <= nguongThap)
                         {
-                            trangThaiIcon = "📦 Tồn thấp (" + slTon + ")";
+                            trangThaiIcon = "📦 Tồn thấp (" + slTon + " " + donViTinh + ")";
                             trangThaiDisplay = "Tồn thấp";
                             cntTonThap++;
                         }
 
                         _allRows.Add(new object[]
                         {
-                            tenThuoc, loNhap, ngayNhapStr, hanSDStr, conLaiStr, slTon.ToString(), fefoStr, trangThaiIcon,
+                            tenThuoc, donViTinh, loNhap, ngayNhapStr, hanSDStr, conLaiStr, slTon.ToString(), fefoStr, trangThaiIcon,
                             trangThaiDisplay, soNgay.ToString()
                         });
                     }
@@ -559,8 +567,8 @@ namespace DermaSoft.Forms
             foreach (var row in _allRows)
             {
                 string tenThuoc = row[0].ToString().ToLower();
-                string loNhap = row[1].ToString().ToLower();
-                string trangThaiRaw = row[8].ToString();
+                string loNhap = row[2].ToString().ToLower();
+                string trangThaiRaw = row[9].ToString();
 
                 // Search filter
                 if (!string.IsNullOrEmpty(search))

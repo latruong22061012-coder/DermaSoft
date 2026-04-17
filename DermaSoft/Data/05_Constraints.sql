@@ -132,6 +132,48 @@ GO
 -- Email, SMS, App (trong ứng dụng)
 
 -- ============================================================
+-- PHẦN 7B: RÀNG BUỘC BẢNG LƯƠNG
+-- ============================================================
+PRINT 'Adding Salary constraints...'
+
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_CauHinhLuong_Loai')
+    ALTER TABLE CauHinhLuong
+    ADD CONSTRAINT CHK_CauHinhLuong_Loai
+    CHECK (LoaiTinhLuong IN ('THEO_BN', 'THEO_GIO', 'THEO_THANG'));
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_CauHinhLuong_DonGia')
+    ALTER TABLE CauHinhLuong
+    ADD CONSTRAINT CHK_CauHinhLuong_DonGia
+    CHECK (DonGia > 0);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_CauHinhLuong_HeSoTC')
+    ALTER TABLE CauHinhLuong
+    ADD CONSTRAINT CHK_CauHinhLuong_HeSoTC
+    CHECK (HeSoTangCa >= 1.0);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_BangLuong_TrangThai')
+    ALTER TABLE BangLuong
+    ADD CONSTRAINT CHK_BangLuong_TrangThai
+    CHECK (TrangThai BETWEEN 0 AND 2);
+GO
+-- 0=Nháp, 1=Đã duyệt, 2=Đã thanh toán
+
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_BangLuong_TongLuong')
+    ALTER TABLE BangLuong
+    ADD CONSTRAINT CHK_BangLuong_TongLuong
+    CHECK (TongLuong >= 0);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CHK_LichSuTraLuong_SoTien')
+    ALTER TABLE LichSuTraLuong
+    ADD CONSTRAINT CHK_LichSuTraLuong_SoTien
+    CHECK (SoTienTra > 0);
+GO
+
+-- ============================================================
 -- PHẦN 8: INDEXES CHO HIỆU NĂNG - XOÁ MỀM (SOFT DELETE)
 -- ============================================================
 PRINT 'Creating Soft Delete indexes...'
@@ -195,6 +237,25 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ChiTietNhapKho_HanSuDung')
     CREATE INDEX IX_ChiTietNhapKho_HanSuDung ON ChiTietNhapKho(HanSuDung) 
     INCLUDE (SoLuongConLai, MaThuoc);
+GO
+
+-- ============================================================
+-- PHẦN 10B: INDEXES CHO BẢNG LƯƠNG
+-- ============================================================
+PRINT 'Creating Salary indexes...'
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_BangLuong_ThangNam')
+    CREATE INDEX IX_BangLuong_ThangNam ON BangLuong(ThangNam)
+    INCLUDE (MaNguoiDung, TrangThai, TongLuong);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_BangLuong_NguoiDung')
+    CREATE INDEX IX_BangLuong_NguoiDung ON BangLuong(MaNguoiDung)
+    INCLUDE (ThangNam, TrangThai);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CauHinhLuong_VaiTro')
+    CREATE INDEX IX_CauHinhLuong_VaiTro ON CauHinhLuong(MaVaiTro, NgayHieuLuc DESC);
 GO
 
 -- ============================================================

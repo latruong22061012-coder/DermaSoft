@@ -345,8 +345,9 @@ namespace DermaSoft.Forms
                                 if (tonDauKy < 0) tonDauKy = 0;
 
                                 string trangThai;
-                                if (tonCuoiKy <= AppSettings.NguongNguyHiem) trangThai = "Nguy hiểm";
-                                else if (tonCuoiKy <= AppSettings.NguongThap) trangThai = "Thấp";
+                                int[] nguong = AppSettings.LayNguong(donVi);
+                                if (tonCuoiKy <= nguong[1]) trangThai = "Nguy hiểm";
+                                else if (tonCuoiKy <= nguong[0]) trangThai = "Thấp";
                                 else trangThai = "OK";
 
                                 _danhSach.Add(new KhoRow
