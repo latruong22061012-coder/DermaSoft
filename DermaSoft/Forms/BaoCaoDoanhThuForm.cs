@@ -389,7 +389,9 @@ namespace DermaSoft.Forms
             {
                 using (var conn = DatabaseConnection.GetConnection())
                 {
-                    // Query tổng hợp
+                    // Query tổng hợp — chỉ hóa đơn ĐÃ thanh toán (TrangThai=1)
+                    // TongTien đã = DV+Thuốc-GiảmGiá (InvoiceForm line 665)
+                    // COALESCE: phòng NgayThanhToan NULL
                     using (var cmd = new SqlCommand(
                         @"SELECT 
                             ISNULL(SUM(hd.TongTien), 0),
@@ -398,8 +400,9 @@ namespace DermaSoft.Forms
                             ISNULL(SUM(hd.TongTienDichVu), 0)
                           FROM HoaDon hd
                           WHERE hd.IsDeleted = 0
-                            AND CAST(hd.NgayTao AS DATE) >= @Tu
-                            AND CAST(hd.NgayTao AS DATE) <= @Den", conn))
+                            AND hd.TrangThai = 1
+                            AND CAST(COALESCE(hd.NgayThanhToan, hd.NgayTao) AS DATE) >= @Tu
+                            AND CAST(COALESCE(hd.NgayThanhToan, hd.NgayTao) AS DATE) <= @Den", conn))
                     {
                         cmd.Parameters.AddWithValue("@Tu", _tuNgay);
                         cmd.Parameters.AddWithValue("@Den", _denNgay);
@@ -417,30 +420,33 @@ namespace DermaSoft.Forms
                     }
 
                     // Query chi tiết — theo ngày hoặc theo tháng
+                    // TongTien đã = DV+Thuốc-GiảmGiá (InvoiceForm line 665)
                     string sql = _locTheoThang
                         ? @"SELECT 
-                                DATEFROMPARTS(YEAR(hd.NgayTao), MONTH(hd.NgayTao), 1) AS Ngay,
+                                DATEFROMPARTS(YEAR(COALESCE(hd.NgayThanhToan, hd.NgayTao)), MONTH(COALESCE(hd.NgayThanhToan, hd.NgayTao)), 1) AS Ngay,
                                 COUNT(*) AS SoHD,
                                 ISNULL(SUM(hd.TongTien), 0) AS DoanhThu,
                                 ISNULL(SUM(hd.TongThuoc), 0) AS Thuoc,
                                 ISNULL(SUM(hd.TongTienDichVu), 0) AS DichVu
                               FROM HoaDon hd
                               WHERE hd.IsDeleted = 0
-                                AND CAST(hd.NgayTao AS DATE) >= @Tu
-                                AND CAST(hd.NgayTao AS DATE) <= @Den
-                              GROUP BY YEAR(hd.NgayTao), MONTH(hd.NgayTao)
+                                AND hd.TrangThai = 1
+                                AND CAST(COALESCE(hd.NgayThanhToan, hd.NgayTao) AS DATE) >= @Tu
+                                AND CAST(COALESCE(hd.NgayThanhToan, hd.NgayTao) AS DATE) <= @Den
+                              GROUP BY YEAR(COALESCE(hd.NgayThanhToan, hd.NgayTao)), MONTH(COALESCE(hd.NgayThanhToan, hd.NgayTao))
                               ORDER BY Ngay DESC"
                         : @"SELECT 
-                                CAST(hd.NgayTao AS DATE) AS Ngay,
+                                CAST(COALESCE(hd.NgayThanhToan, hd.NgayTao) AS DATE) AS Ngay,
                                 COUNT(*) AS SoHD,
                                 ISNULL(SUM(hd.TongTien), 0) AS DoanhThu,
                                 ISNULL(SUM(hd.TongThuoc), 0) AS Thuoc,
                                 ISNULL(SUM(hd.TongTienDichVu), 0) AS DichVu
                               FROM HoaDon hd
                               WHERE hd.IsDeleted = 0
-                                AND CAST(hd.NgayTao AS DATE) >= @Tu
-                                AND CAST(hd.NgayTao AS DATE) <= @Den
-                              GROUP BY CAST(hd.NgayTao AS DATE)
+                                AND hd.TrangThai = 1
+                                AND CAST(COALESCE(hd.NgayThanhToan, hd.NgayTao) AS DATE) >= @Tu
+                                AND CAST(COALESCE(hd.NgayThanhToan, hd.NgayTao) AS DATE) <= @Den
+                              GROUP BY CAST(COALESCE(hd.NgayThanhToan, hd.NgayTao) AS DATE)
                               ORDER BY Ngay DESC";
 
                     using (var cmd = new SqlCommand(sql, conn))
@@ -765,13 +771,8 @@ namespace DermaSoft.Forms
 
         private string FormatTien(decimal soTien)
         {
-            if (soTien >= 1_000_000_000)
-                return (soTien / 1_000_000_000m).ToString("0.#") + "B";
-            if (soTien >= 1_000_000)
-                return (soTien / 1_000_000m).ToString("0.#") + "M";
-            if (soTien >= 1_000)
-                return (soTien / 1_000m).ToString("0.#") + "K";
-            return soTien.ToString("N0") + "đ";
+            // Hiển thị số chính xác (đồng bộ Web/App) — không làm tròn
+            return soTien.ToString("#,##0") + "đ";
         }
 
         private static Color BlendColor(Color from, Color to, float ratio)

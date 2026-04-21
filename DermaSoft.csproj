@@ -105,6 +105,10 @@
     <Compile Include="DermaSoft\Forms\DashboardLeTanForm.Designer.cs">
       <DependentUpon>DashboardLeTanForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="DermaSoft\Forms\DashboardQuanKhoForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\DashboardQuanKhoForm.Designer.cs" />
     <Compile Include="DermaSoft\Forms\HinhAnhForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -142,6 +146,10 @@
     <Compile Include="DermaSoft\Forms\MainFormLeTan.Designer.cs">
       <DependentUpon>MainFormLeTan.cs</DependentUpon>
     </Compile>
+    <Compile Include="DermaSoft\Forms\MainFormQuanKho.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DermaSoft\Forms\MainFormQuanKho.Designer.cs" />
     <Compile Include="DermaSoft\Forms\MemberForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -293,6 +301,7 @@
     <None Include="DermaSoft\app.manifest" />
     <None Include="DermaSoft\Enums\README.md" />
     <None Include="DermaSoft\TEST_PLAN.md" />
+    <None Include="DermaSoft\TEST_TONKHO.md" />
     <None Include="ENUM_SUMMARY_VI.md" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
@@ -315,8 +324,14 @@
     <Content Include="DermaSoft\Data\04_Views.sql" />
     <Content Include="DermaSoft\Data\05_Constraints.sql" />
     <Content Include="DermaSoft\Data\05_SeedTestData.sql" />
+    <Content Include="DermaSoft\Data\FIX_TONKHO_LECH.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_APPLY_FIXES.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_BANGLUONG.sql" />
+    <Content Include="DermaSoft\Data\MIGRATION_DONGBO_DOANHTHU.sql" />
+    <Content Include="DermaSoft\Data\MIGRATION_FIX_TONKHO.sql" />
+    <Content Include="DermaSoft\Data\MIGRATION_FIX_TONKHO_BUOC2.sql" />
+    <Content Include="DermaSoft\Data\MIGRATION_SOTHUTU.sql" />
+    <Content Include="DermaSoft\Data\TEST_TONKHO_AUTO.sql" />
     <Content Include="ENUM_COMPLETION_REPORT.txt" />
     <None Include="Resources\logo.png" />
     <None Include="Resources\logo1.png" />

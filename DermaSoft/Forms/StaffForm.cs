@@ -151,7 +151,7 @@ namespace DermaSoft.Forms
                 FillColor = InputBg,
                 DropDownStyle = ComboBoxStyle.DropDownList,
             };
-            cboLocVaiTro.Items.AddRange(new object[] { "Tất cả vai trò", "Admin", "Bác Sĩ", "Lễ Tân" });
+            cboLocVaiTro.Items.AddRange(new object[] { "Tất cả vai trò", "Admin", "Bác Sĩ", "Lễ Tân", "Quản Kho" });
             cboLocVaiTro.SelectedIndex = 0;
             cboLocVaiTro.SelectedIndexChanged += (s, e) => LoadDanhSach();
             pnlCboWrap.Controls.Add(cboLocVaiTro);
@@ -411,7 +411,7 @@ namespace DermaSoft.Forms
                 FillColor = InputBg,
                 DropDownStyle = ComboBoxStyle.DropDownList,
             };
-            cboVaiTro.Items.AddRange(new object[] { "Admin", "Bác Sĩ", "Lễ Tân" });
+            cboVaiTro.Items.AddRange(new object[] { "Admin", "Bác Sĩ", "Lễ Tân", "Quản Kho" });
             cboVaiTro.SelectedIndex = 1;
             pnlCard.Controls.Add(cboVaiTro);
             y += 42;
@@ -606,7 +606,9 @@ namespace DermaSoft.Forms
         {
             dgvNhanVien.Rows.Clear();
             string keyword = txtTimKiem?.Text?.Trim() ?? "";
-            int filterVT = cboLocVaiTro?.SelectedIndex ?? 0;
+            // Mapping: cboLocVaiTro index → MaVaiTro (0=Tất cả, 1=Admin, 2=BacSi, 3=LeTan, 4=QuanKho)
+            int[] filterMap = { 0, 1, 2, 3, 5 };
+            int filterVT = filterMap[Math.Min(cboLocVaiTro?.SelectedIndex ?? 0, filterMap.Length - 1)];
 
             try
             {
@@ -617,7 +619,7 @@ namespace DermaSoft.Forms
                       FROM NguoiDung nd
                       JOIN VaiTro vt ON nd.MaVaiTro = vt.MaVaiTro
                       WHERE nd.IsDeleted = 0
-                        AND nd.MaVaiTro IN (1, 2, 3)
+                        AND nd.MaVaiTro IN (1, 2, 3, 5)
                         AND (@Keyword = '' OR nd.HoTen LIKE '%' + @Keyword + '%' 
                              OR nd.TenDangNhap LIKE '%' + @Keyword + '%'
                              OR nd.SoDienThoai LIKE '%' + @Keyword + '%')
@@ -647,7 +649,9 @@ namespace DermaSoft.Forms
                             string vaiTroBadge;
                             if (maVT == 1) vaiTroBadge = "🛡️ Admin";
                             else if (maVT == 2) vaiTroBadge = "🩺 Bác Sĩ";
-                            else vaiTroBadge = "🏥 Lễ Tân";
+                            else if (maVT == 3) vaiTroBadge = "🏥 Lễ Tân";
+                            else if (maVT == 5) vaiTroBadge = "📦 Quản Kho";
+                            else vaiTroBadge = vaiTro;
 
                             int idx = dgvNhanVien.Rows.Add(maNV, hoTen, username, vaiTroBadge, sdt, email, ttText, "");
                             dgvNhanVien.Rows[idx].Cells["MaNguoiDung"].Value = ma;
@@ -690,6 +694,12 @@ namespace DermaSoft.Forms
                 {
                     e.CellStyle.BackColor = BadgeInfoBg;
                     e.CellStyle.ForeColor = BadgeInfoFg;
+                    e.CellStyle.Font = AppFonts.Badge;
+                }
+                else if (v.Contains("Kho"))
+                {
+                    e.CellStyle.BackColor = BadgeActiveBg;
+                    e.CellStyle.ForeColor = BadgeActiveFg;
                     e.CellStyle.Font = AppFonts.Badge;
                 }
                 else
@@ -781,8 +791,15 @@ namespace DermaSoft.Forms
                             txtSDT.Text = reader.IsDBNull(1) ? "" : reader.GetString(1);
                             txtEmail.Text = reader.IsDBNull(2) ? "" : reader.GetString(2);
                             int vt = Convert.ToInt32(reader.GetValue(3));
-                            cboVaiTro.SelectedIndex = Math.Max(0, vt - 1);
+                            // Reverse mapping: MaVaiTro → cboVaiTro index
+                            int vtIdx = 0;
+                            if (vt == 1) vtIdx = 0;
+                            else if (vt == 2) vtIdx = 1;
+                            else if (vt == 3) vtIdx = 2;
+                            else if (vt == 5) vtIdx = 3;
+                            cboVaiTro.SelectedIndex = vtIdx;
                             txtTenDangNhap.Text = reader.IsDBNull(4) ? "" : reader.GetString(4);
+                            txtMatKhau.Text = ""; // Xóa mật khẩu — để trống = không đổi MK
                             bool active = Convert.ToBoolean(reader.GetValue(5));
 
                             _maNVDangChon = maNV;
@@ -832,7 +849,9 @@ namespace DermaSoft.Forms
             string email = txtEmail.Text.Trim();
             string tenDN = txtTenDangNhap.Text.Trim();
             string matKhau = txtMatKhau.Text.Trim();
-            int maVaiTro = cboVaiTro.SelectedIndex + 1;
+            // Mapping: cboVaiTro index → MaVaiTro (0=Admin, 1=BacSi, 2=LeTan, 3=QuanKho)
+            int[] vaiTroMap = { 1, 2, 3, 5 };
+            int maVaiTro = vaiTroMap[cboVaiTro.SelectedIndex];
 
             if (string.IsNullOrEmpty(hoTen) || string.IsNullOrEmpty(sdt))
             {
@@ -881,7 +900,7 @@ namespace DermaSoft.Forms
                             sqlUpdate += ", TenDangNhap = @TenDangNhap";
 
                         if (!string.IsNullOrEmpty(matKhau))
-                            sqlUpdate += ", MatKhau = @MatKhau";
+                            sqlUpdate += ", MatKhau = @MatKhau, DoiMatKhau = 1";
 
                         sqlUpdate += " WHERE MaNguoiDung = @MaNguoiDung";
 

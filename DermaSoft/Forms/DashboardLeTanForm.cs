@@ -134,6 +134,7 @@ namespace DermaSoft.Forms
                     SELECT
                         lh.MaLichHen,
                         lh.TrangThai,
+                        ISNULL(CAST(lh.SoThuTu AS NVARCHAR(10)), N'—') AS STT,
                         FORMAT(lh.ThoiGianHen, 'HH:mm')            AS ThoiGianHen,
                         ISNULL(bn.HoTen, 
                             CASE WHEN lh.SoDienThoaiKhach IS NOT NULL 
@@ -144,7 +145,7 @@ namespace DermaSoft.Forms
                         ISNULL(nd.HoTen, N'Chưa phân công')         AS TenBacSi,
                         CASE lh.TrangThai
                             WHEN 0 THEN N'Chờ XN'
-                            WHEN 1 THEN N'Đã XN'
+                            WHEN 1 THEN N'Đã XN (STT: ' + ISNULL(CAST(lh.SoThuTu AS NVARCHAR(10)), N'—') + N')'
                             WHEN 2 THEN N'Đã tiếp nhận'
                             WHEN 3 THEN N'Đã hủy'
                             ELSE        N'Không rõ'
@@ -227,12 +228,13 @@ namespace DermaSoft.Forms
                     SELECT TOP 10
                         pk.MaPhieuKham,
                         ISNULL(bn.HoTen, N'Bệnh nhân')   AS TenBenhNhan,
-                        ISNULL(hd.TongTien,
-                            ISNULL(
+                        CASE WHEN hd.MaHoaDon IS NOT NULL
+                            THEN ISNULL(hd.TongTienDichVu,0) + ISNULL(hd.TongThuoc,0) - ISNULL(hd.GiamGia,0)
+                            ELSE ISNULL(
                                 (SELECT SUM(ctdv.ThanhTien) FROM ChiTietDichVu ctdv WHERE ctdv.MaPhieuKham = pk.MaPhieuKham), 0)
                             + ISNULL(
                                 (SELECT SUM(cdt.SoLuong * t.DonGia) FROM ChiTietDonThuoc cdt JOIN Thuoc t ON cdt.MaThuoc = t.MaThuoc WHERE cdt.MaPhieuKham = pk.MaPhieuKham), 0)
-                        )                                  AS TongTien,
+                        END                                AS TongTien,
                         hd.MaHoaDon
                     FROM PhieuKham pk
                     JOIN BenhNhan bn ON pk.MaBenhNhan = bn.MaBenhNhan
@@ -278,23 +280,30 @@ namespace DermaSoft.Forms
 
         /// <summary>
         /// Tạo card nhỏ cho một hóa đơn trong danh sách bên phải.
-        /// Layout: Tên BN (bold) | Phiếu #XXXX | Số tiền xanh lá
+        /// Layout: Tên BN (bold) | Phiếu #XXXX + badge trạng thái | Số tiền xanh lá
+        /// Click → điều hướng sang Thanh Toán Hóa Đơn.
         /// </summary>
         private Panel TaoHoaDonCard(int maHoaDon, int maPhieu, string tenBN, decimal tongTien)
         {
             // Card container
             var card = new Panel
             {
-                Size = new Size(flpHoaDonList.Width - 20, 72),
+                Size = new Size(flpHoaDonList.Width - 20, 78),
                 BackColor = Color.White,
                 Cursor = Cursors.Hand,
-                Tag = maHoaDon,
+                Tag = maPhieu, // Lưu MaPhieuKham để điều hướng
                 Padding = new Padding(12, 10, 12, 10),
             };
             card.Paint += (s, e) =>
             {
+                var g = e.Graphics;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                // Viền trái xanh lá
+                using (var brush = new SolidBrush(Color.FromArgb(15, 92, 77)))
+                    g.FillRectangle(brush, 0, 0, 4, card.Height);
+                // Viền ngoài
                 using (var pen = new Pen(Color.FromArgb(226, 232, 240), 1f))
-                    e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
+                    g.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
             };
 
             // Tên bệnh nhân
@@ -303,42 +312,109 @@ namespace DermaSoft.Forms
                 Text = tenBN,
                 Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(26, 46, 37),
-                Location = new Point(12, 10),
+                Location = new Point(14, 8),
                 AutoSize = true,
                 BackColor = Color.Transparent,
             };
 
-            // Mã phiếu
+            // Mã phiếu + badge
             var lblPhieu = new Label
             {
                 Text = $"Phiếu #{maPhieu:D4}",
                 Font = new Font("Segoe UI", 8f),
                 ForeColor = Color.FromArgb(107, 114, 128),
-                Location = new Point(12, 32),
+                Location = new Point(14, 30),
                 AutoSize = true,
                 BackColor = Color.Transparent,
+            };
+
+            // Badge trạng thái
+            var lblBadge = new Label
+            {
+                Text = "  Chờ TT  ",
+                Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(146, 64, 14),
+                BackColor = Color.FromArgb(254, 243, 199),
+                AutoSize = true,
+                Location = new Point(110, 31),
             };
 
             // Số tiền
             var lblTien = new Label
             {
                 Text = $"{tongTien:#,##0} đ",
-                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 10f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(15, 92, 77),
-                Location = new Point(12, 50),
+                Location = new Point(14, 52),
                 AutoSize = true,
                 BackColor = Color.Transparent,
             };
 
+            // Nút thanh toán nhanh
+            var lblAction = new Label
+            {
+                Text = "Thanh toán →",
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(15, 92, 77),
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                Cursor = Cursors.Hand,
+            };
+            lblAction.Location = new Point(card.Width - lblAction.PreferredWidth - 18, 54);
+
             // Hover effect
-            card.MouseEnter += (s, e) => card.BackColor = Color.FromArgb(245, 251, 247);
-            card.MouseLeave += (s, e) => card.BackColor = Color.White;
+            Action<bool> setHover = (hover) =>
+            {
+                card.BackColor = hover ? Color.FromArgb(240, 253, 244) : Color.White;
+            };
+            card.MouseEnter += (s, e) => setHover(true);
+            card.MouseLeave += (s, e) => setHover(false);
+            foreach (Control c in new Control[] { lblTen, lblPhieu, lblBadge, lblTien, lblAction })
+            {
+                c.MouseEnter += (s, e) => setHover(true);
+                c.MouseLeave += (s, e) => setHover(false);
+            }
+
+            // Click → Điều hướng sang Thanh Toán Hóa Đơn
+            EventHandler onClick = (s, e) => DieuHuongThanhToan(maPhieu);
+            card.Click += onClick;
+            lblTen.Click += onClick;
+            lblPhieu.Click += onClick;
+            lblBadge.Click += onClick;
+            lblTien.Click += onClick;
+            lblAction.Click += onClick;
 
             card.Controls.Add(lblTen);
             card.Controls.Add(lblPhieu);
+            card.Controls.Add(lblBadge);
             card.Controls.Add(lblTien);
+            card.Controls.Add(lblAction);
 
             return card;
+        }
+
+        /// <summary>
+        /// Điều hướng sang menu Thanh Toán Hóa Đơn và tự động mở phiếu khám.
+        /// </summary>
+        private void DieuHuongThanhToan(int maPhieuKham)
+        {
+            _refreshTimer?.Stop();
+
+            MainFormLeTan mainForm = null;
+            Control parent = this.Parent;
+            while (parent != null)
+            {
+                if (parent is MainFormLeTan mf) { mainForm = mf; break; }
+                parent = parent.Parent;
+            }
+
+            if (mainForm != null)
+            {
+                mainForm.BeginInvoke(new Action(() =>
+                {
+                    mainForm.ChuyenMenuThanhToan(maPhieuKham);
+                }));
+            }
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -372,7 +448,7 @@ namespace DermaSoft.Forms
             DieuHuongFormCon("Quản Lý Lịch Hẹn");
         }
 
-        /// <summary>Xác nhận lịch hẹn đang chọn (TrangThai 0 → 1).</summary>
+        /// <summary>Xác nhận lịch hẹn đang chọn (TrangThai 0 → 1) + tự động cấp STT.</summary>
         private void BtnXacNhan_Click(object sender, EventArgs e)
         {
             if (dgvQueue.CurrentRow == null || dgvQueue.CurrentRow.IsNewRow)
@@ -394,18 +470,54 @@ namespace DermaSoft.Forms
             int maLichHen = Convert.ToInt32(dgvQueue.CurrentRow.Cells["MaLichHen"].Value);
             string tenBN = dgvQueue.CurrentRow.Cells["colBenhNhan"]?.Value?.ToString() ?? "";
 
-            var confirm = MessageBox.Show(
-                $"Xác nhận lịch hẹn cho \"{tenBN}\"?",
-                "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
+            // ── Tự động tính STT theo khung giờ đã đặt lịch ──
+            int sttGoiY = TinhSoThuTuTiepTheo(maLichHen);
+
+            // Cho phép tùy chỉnh STT
+            string sttInput = Microsoft.VisualBasic.Interaction.InputBox(
+                $"Xác nhận lịch hẹn cho \"{tenBN}\"\n\n" +
+                $"Số thứ tự gợi ý (theo khung giờ): {sttGoiY}\n" +
+                $"Nhập STT tùy chỉnh hoặc để nguyên:",
+                "Xác nhận & Cấp số thứ tự",
+                sttGoiY.ToString());
+
+            // Người dùng bấm Cancel
+            if (string.IsNullOrWhiteSpace(sttInput)) return;
+
+            if (!int.TryParse(sttInput.Trim(), out int sttChon) || sttChon <= 0)
+            {
+                MessageBox.Show("Số thứ tự phải là số nguyên dương.",
+                    "STT không hợp lệ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Kiểm tra STT đã được sử dụng chưa
+            try
+            {
+                var dtCheck = DatabaseConnection.ExecuteQuery(
+                    @"SELECT COUNT(*) AS C FROM LichHen
+                      WHERE CAST(ThoiGianHen AS DATE) = CAST(GETDATE() AS DATE)
+                        AND TrangThai = 1 AND SoThuTu = @STT",
+                    p => p.AddWithValue("@STT", sttChon));
+                int daTonTai = dtCheck != null && dtCheck.Rows.Count > 0
+                    ? Convert.ToInt32(dtCheck.Rows[0]["C"]) : 0;
+                if (daTonTai > 0)
+                {
+                    var xn = MessageBox.Show(
+                        $"STT {sttChon} đã được sử dụng cho lịch hẹn khác hôm nay.\nBạn vẫn muốn dùng STT này?",
+                        "STT trùng lặp", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    if (xn != DialogResult.Yes) return;
+                }
+            }
+            catch { /* bỏ qua lỗi check */ }
 
             try
             {
-                const string sql = "UPDATE LichHen SET TrangThai = 1 WHERE MaLichHen = @MaLH";
+                const string sql = "UPDATE LichHen SET TrangThai = 1, SoThuTu = @STT WHERE MaLichHen = @MaLH";
                 DatabaseConnection.ExecuteNonQuery(sql,
-                    p => p.AddWithValue("@MaLH", maLichHen));
+                    p => { p.AddWithValue("@MaLH", maLichHen); p.AddWithValue("@STT", sttChon); });
 
-                MessageBox.Show("Đã xác nhận lịch hẹn thành công! ✅",
+                MessageBox.Show($"Đã xác nhận lịch hẹn thành công! ✅\nSố thứ tự: {sttChon}",
                     "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 LoadTatCa();
@@ -415,6 +527,28 @@ namespace DermaSoft.Forms
                 MessageBox.Show("Lỗi xác nhận lịch hẹn:\n" + ex.Message,
                     "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        /// <summary>
+        /// Tính STT tiếp theo dựa trên khung giờ đặt lịch hẹn.
+        /// Sắp xếp theo ThoiGianHen ASC, STT = thứ tự trong danh sách hôm nay.
+        /// </summary>
+        private int TinhSoThuTuTiepTheo(int maLichHen)
+        {
+            try
+            {
+                // Đếm số lịch hẹn đã xác nhận hôm nay + 1
+                var dt = DatabaseConnection.ExecuteQuery(
+                    @"SELECT ISNULL(MAX(SoThuTu), 0) + 1 AS STTMoi
+                      FROM LichHen
+                      WHERE CAST(ThoiGianHen AS DATE) = CAST(GETDATE() AS DATE)
+                        AND TrangThai = 1
+                        AND SoThuTu IS NOT NULL");
+                if (dt != null && dt.Rows.Count > 0)
+                    return Convert.ToInt32(dt.Rows[0]["STTMoi"]);
+            }
+            catch { }
+            return 1;
         }
 
         /// <summary>

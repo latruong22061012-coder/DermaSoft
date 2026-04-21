@@ -426,7 +426,7 @@ namespace DermaSoft.Forms
             this.MinimizeBox = false;
             this.Name = "LoginForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "5";
+            this.Text = "   ";
             this.pnlHeader.ResumeLayout(false);
             this.pnlForm.ResumeLayout(false);
             this.pnlForm.PerformLayout();

@@ -56,8 +56,8 @@ GO
 CREATE VIEW VW_BaoCaoDoanhThu
 AS
 SELECT
-    YEAR(hd.NgayThanhToan) AS Nam,
-    MONTH(hd.NgayThanhToan) AS Thang,
+    YEAR(COALESCE(hd.NgayThanhToan, hd.NgayTao)) AS Nam,
+    MONTH(COALESCE(hd.NgayThanhToan, hd.NgayTao)) AS Thang,
     hd.MaHoaDon,
     hd.MaPhieuKham,
     pk.MaBenhNhan,
@@ -66,14 +66,18 @@ SELECT
     hd.TongThuoc,
     hd.TongTien,
     hd.GiamGia,
+    -- Doanh thu thực tế = TongTien (đã = DV+Thuốc-GiảmGiá, tính bởi InvoiceForm)
+    hd.TongTien AS DoanhThuThucTe,
     hd.TienKhachTra,
     hd.TienThua,
     hd.TrangThai,
-    COUNT(*) OVER (PARTITION BY YEAR(hd.NgayThanhToan), MONTH(hd.NgayThanhToan)) AS SoHoaDonThang
+    COALESCE(hd.NgayThanhToan, hd.NgayTao) AS NgayThucTe,
+    COUNT(*) OVER (PARTITION BY YEAR(COALESCE(hd.NgayThanhToan, hd.NgayTao)), MONTH(COALESCE(hd.NgayThanhToan, hd.NgayTao))) AS SoHoaDonThang
 FROM HoaDon hd
 LEFT JOIN PhieuKham pk ON hd.MaPhieuKham = pk.MaPhieuKham
 LEFT JOIN BenhNhan bn ON pk.MaBenhNhan = bn.MaBenhNhan
-WHERE hd.IsDeleted = 0;
+WHERE hd.IsDeleted = 0
+  AND hd.TrangThai = 1;
 GO
 
 -- ============================================================

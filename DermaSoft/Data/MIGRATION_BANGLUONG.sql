@@ -1,14 +1,3 @@
--- ═══════════════════════════════════════════════════════════════
--- MIGRATION: THÊM BẢNG LƯƠNG VÀO DB HIỆN TẠI
--- ═══════════════════════════════════════════════════════════════
--- Ngày: 2026-04
--- Mục đích: Tạo 3 bảng CauHinhLuong + BangLuong + LichSuTraLuong
---           trên DB đang có dữ liệu. Tất cả IF NOT EXISTS — an toàn chạy lại.
---
--- SAU KHI CHẠY FILE NÀY, chạy tiếp:
---   05_Constraints.sql (thêm CHECK + INDEX cho bảng lương)
--- ═══════════════════════════════════════════════════════════════
-
 USE DERMASOFT;
 GO
 

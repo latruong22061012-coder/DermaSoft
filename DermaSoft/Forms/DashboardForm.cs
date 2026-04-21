@@ -98,11 +98,12 @@ namespace DermaSoft.Forms
             {
                 using (var conn = DatabaseConnection.GetConnection())
                 {
-                    // Doanh thu hôm nay (từ HoaDon)
+                    // Doanh thu hôm nay — TongTien đã = DV+T-GG (InvoiceForm line 665)
                     using (var cmd = new SqlCommand(
                         @"SELECT ISNULL(SUM(hd.TongTien), 0) 
                           FROM HoaDon hd 
-                          WHERE CAST(hd.NgayTao AS DATE) = CAST(GETDATE() AS DATE) 
+                          WHERE CAST(COALESCE(hd.NgayThanhToan, hd.NgayTao) AS DATE) = CAST(GETDATE() AS DATE) 
+                            AND hd.TrangThai = 1
                             AND hd.IsDeleted = 0", conn))
                     {
                         var result = cmd.ExecuteScalar();
@@ -127,13 +128,12 @@ namespace DermaSoft.Forms
                         lichHenSapToi = Convert.ToInt32(cmd.ExecuteScalar());
                     }
 
-                    // Thuốc sắp hết hạn (trong 90 ngày — đồng bộ với TonKhoForm)
+                    // Thuốc hết hạn + sắp hết hạn (đồng bộ với TonKhoForm)
                     using (var cmd = new SqlCommand(
                         @"SELECT COUNT(DISTINCT ctk.MaThuoc) 
                           FROM ChiTietNhapKho ctk
                           WHERE ctk.SoLuongConLai > 0
-                            AND ctk.HanSuDung <= DATEADD(DAY, 90, GETDATE()) 
-                            AND ctk.HanSuDung > GETDATE()", conn))
+                            AND ctk.HanSuDung <= DATEADD(DAY, 90, GETDATE())", conn))
                     {
                         thuocSapHetHan = Convert.ToInt32(cmd.ExecuteScalar());
                     }
@@ -146,7 +146,7 @@ namespace DermaSoft.Forms
                 new { Icon = "\uD83D\uDCB0", Value = FormatTien(doanhThuHomNay), Title = "Doanh thu h\u00f4m nay",   Accent = ColorScheme.Gold,    Sub = "" },
                 new { Icon = "\uD83E\uDE7A", Value = luotKhamHomNay.ToString(),     Title = "L\u01b0\u1ee3t kh\u00e1m h\u00f4m nay",   Accent = ColorScheme.Primary, Sub = "" },
                 new { Icon = "\uD83D\uDCC5", Value = lichHenSapToi.ToString(),      Title = "L\u1ecbch h\u1eb9n s\u1eafp t\u1edbi",     Accent = ColorScheme.Info,    Sub = "" },
-                new { Icon = "\u26A0\uFE0F",  Value = thuocSapHetHan.ToString(),     Title = "Thu\u1ed1c s\u1eafp h\u1ebft h\u1ea1n",   Accent = ColorScheme.Danger,  Sub = thuocSapHetHan > 0 ? "\u25BC C\u1ea7n x\u1eed l\u00fd ngay" : "" },
+                new { Icon = "\u26A0\uFE0F",  Value = thuocSapHetHan.ToString(),     Title = "H\u1ebft h\u1ea1n / S\u1eafp h\u1ebft h\u1ea1n", Accent = ColorScheme.Danger,  Sub = thuocSapHetHan > 0 ? "\u25BC C\u1ea7n x\u1eed l\u00fd ngay" : "" },
             };
 
             for (int i = 0; i < kpis.Length; i++)
@@ -212,10 +212,12 @@ namespace DermaSoft.Forms
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(
                     @"SELECT CAST(DATEADD(DAY, -n.n, GETDATE()) AS DATE) AS Ngay,
-                             ISNULL((SELECT SUM(TongTien) FROM HoaDon 
-                                     WHERE CAST(NgayTao AS DATE) = CAST(DATEADD(DAY, -n.n, GETDATE()) AS DATE)), 0) AS Tong
+                             ISNULL((SELECT SUM(TongTien)
+                                      FROM HoaDon 
+                                      WHERE CAST(COALESCE(NgayThanhToan, NgayTao) AS DATE) = CAST(DATEADD(DAY, -n.n, GETDATE()) AS DATE)
+                                        AND TrangThai = 1 AND IsDeleted = 0), 0) AS Tong
                       FROM (SELECT 0 AS n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 
-                            UNION SELECT 4 UNION SELECT 5 UNION SELECT 6) n
+                             UNION SELECT 4 UNION SELECT 5 UNION SELECT 6) n
                       ORDER BY Ngay ASC", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -464,7 +466,7 @@ namespace DermaSoft.Forms
                       FROM NguoiDung nd 
                       JOIN VaiTro vt ON nd.MaVaiTro = vt.MaVaiTro
                       WHERE nd.TrangThaiTK = 1 AND nd.IsDeleted = 0
-                        AND nd.MaVaiTro IN (1, 2, 3)
+                        AND nd.MaVaiTro IN (1, 2, 3, 5)
                       ORDER BY nd.MaVaiTro, nd.HoTen", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -566,12 +568,15 @@ namespace DermaSoft.Forms
                         }
                     }
 
-                    // Thuốc sắp hết tồn kho (tổng tồn <= 5)
+                    // Thuốc sắp hết tồn kho (tổng tồn <= 5 — tính từ ChiTietNhapKho)
                     using (var cmd = new SqlCommand(
-                        @"SELECT TenThuoc, SoLuongTon 
-                          FROM Thuoc 
-                          WHERE SoLuongTon <= 5 AND SoLuongTon > 0
-                          ORDER BY SoLuongTon ASC", conn))
+                        @"SELECT t.TenThuoc, ISNULL(SUM(ctk.SoLuongConLai), 0) AS TonThucTe
+                          FROM Thuoc t
+                          LEFT JOIN ChiTietNhapKho ctk ON t.MaThuoc = ctk.MaThuoc AND ctk.SoLuongConLai > 0
+                          WHERE t.IsDeleted = 0
+                          GROUP BY t.TenThuoc
+                          HAVING ISNULL(SUM(ctk.SoLuongConLai), 0) <= 5 AND ISNULL(SUM(ctk.SoLuongConLai), 0) > 0
+                          ORDER BY TonThucTe ASC", conn))
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())

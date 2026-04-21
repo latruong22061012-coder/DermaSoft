@@ -68,6 +68,10 @@ namespace DermaSoft.Forms
                     iconVaiTro = "\uD83D\uDCCB";
                     tenVaiTro  = "L\u1ec5 T\u00e2n";
                     break;
+                case VaiTro.QuanKho:
+                    iconVaiTro = "\uD83D\uDCE6";
+                    tenVaiTro  = "Qu\u1ea3n L\u00fd Kho";
+                    break;
                 default:
                     iconVaiTro = "\uD83D\uDC64";
                     tenVaiTro  = nd.TenVaiTro;
@@ -115,7 +119,6 @@ namespace DermaSoft.Forms
 
                 y = ThemSectionLabel("Kho & Thu\u1ed1c", y);
                 y = ThemMenuItem("\uD83D\uDC8A", "Danh M\u1ee5c Thu\u1ed1c", y);
-                y = ThemMenuItem("\uD83D\uDCE6", "Nh\u1eadp Kho", y);
                 y = ThemMenuItem("\uD83C\uDFEA", "T\u1ed3n Kho", y);
 
                 y = ThemSectionLabel("D\u1ecbch V\u1ee5 & B\u00e1o C\u00e1o", y);

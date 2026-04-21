@@ -320,15 +320,18 @@ SELECT 'HoaDon' AS Bang, COUNT(*) AS SoBanGhi FROM HoaDon WHERE IsDeleted = 0;
 
 PRINT ''
 PRINT '--- DOANH THU THEO NGÀY (dữ liệu cho BaoCaoDoanhThuForm) ---'
+PRINT '  Công thức: DoanhThu = TongTienDichVu + TongThuoc - GiamGia'
 SELECT 
-    CAST(NgayTao AS DATE) AS Ngay, 
+    CAST(NgayThanhToan AS DATE) AS Ngay, 
     COUNT(*) AS SoHD, 
-    SUM(TongTien) AS DoanhThu, 
+    SUM(ISNULL(TongTienDichVu,0) + ISNULL(TongThuoc,0) - ISNULL(GiamGia,0)) AS DoanhThu,
+    SUM(TongTien) AS TongTien_CotGoc,
+    SUM(GiamGia) AS TongGiamGia,
     SUM(TongThuoc) AS Thuoc, 
     SUM(TongTienDichVu) AS DichVu
 FROM HoaDon 
-WHERE IsDeleted = 0
-GROUP BY CAST(NgayTao AS DATE)
+WHERE IsDeleted = 0 AND TrangThai = 1
+GROUP BY CAST(NgayThanhToan AS DATE)
 ORDER BY Ngay DESC;
 
 PRINT '========== SEED HOÀN TẤT =========='

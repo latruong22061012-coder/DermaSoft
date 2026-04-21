@@ -2,7 +2,10 @@ CREATE DATABASE DERMASOFT;
 GO
 USE DERMASOFT;
 GO
-
+Select *
+from Thuoc
+select * 
+from XacThucOTP
 -- ============================================================
 -- PHẦN 1: NHÓM 1 - DANH MỤC & CON NGƯỜI
 -- ============================================================
@@ -128,6 +131,7 @@ CREATE TABLE LichHen (
     TrangThai          TINYINT       DEFAULT 0,    -- 0=Chờ XN, 1=Đã XN, 2=Hoàn thành, 3=Hủy
     GhiChu             NVARCHAR(200),
     SoDienThoaiKhach   VARCHAR(15)   NULL,          -- SĐT khi đặt qua website
+    SoThuTu            INT           NULL,          -- Số thứ tự khi xác nhận lịch hẹn
     FOREIGN KEY (MaBenhNhan)  REFERENCES BenhNhan(MaBenhNhan),
     FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung) ON DELETE SET NULL
 );
@@ -423,6 +427,8 @@ CREATE TABLE LichHen_Notification (
 INSERT INTO VaiTro (TenVaiTro) VALUES (N'Admin');
 INSERT INTO VaiTro (TenVaiTro) VALUES (N'Bác Sĩ');
 INSERT INTO VaiTro (TenVaiTro) VALUES (N'Lễ Tân');
+INSERT INTO VaiTro (TenVaiTro) VALUES (N'Bệnh Nhân');
+INSERT INTO VaiTro (TenVaiTro) VALUES (N'Quản Kho');
 GO
 
 -- Tạo CauHinhLuong (đơn giá theo vai trò)
@@ -430,7 +436,8 @@ INSERT INTO CauHinhLuong (MaVaiTro, LoaiTinhLuong, DonGia, HeSoTangCa, HeSoNgayL
 VALUES
 (1, 'THEO_THANG', 25000000, 1.0, 1.0, 0, 0, '2026-04-01', N'Admin — lương cố định 25tr/tháng'),
 (2, 'THEO_BN',       250000, 1.5, 2.0, 8, 2, '2026-04-01', N'Bác Sĩ — 250k/BN hoàn thành, tăng ca ×1.5'),
-(3, 'THEO_GIO',       50000, 1.5, 2.0, 8, 2, '2026-04-01', N'Lễ Tân — 50k/giờ, tăng ca ×1.5');
+(3, 'THEO_GIO',       50000, 1.5, 2.0, 8, 2, '2026-04-01', N'Lễ Tân — 50k/giờ, tăng ca ×1.5'),
+(5, 'THEO_GIO',       55000, 1.5, 2.0, 8, 2, '2026-04-01', N'Quản Kho — 55k/giờ, tăng ca ×1.5');
 GO
 
 -- Tạo HangThanhVien (bao gồm khuyến mãi theo hạng)

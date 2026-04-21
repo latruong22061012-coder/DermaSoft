@@ -297,10 +297,16 @@ namespace DermaSoft.Forms
                         SELECT 
                             t.TenThuoc,
                             t.DonViTinh,
-                            t.SoLuongTon AS TonHienTai,
+                            ISNULL(ton.TonThucTe, 0) AS TonHienTai,
                             ISNULL(nhap.SoNhap, 0) AS NhapKyNay,
                             ISNULL(xuat.SoXuat, 0) AS XuatKyNay
                         FROM Thuoc t
+                        LEFT JOIN (
+                            SELECT MaThuoc, SUM(SoLuongConLai) AS TonThucTe
+                            FROM ChiTietNhapKho
+                            WHERE SoLuongConLai > 0
+                            GROUP BY MaThuoc
+                        ) ton ON t.MaThuoc = ton.MaThuoc
                         LEFT JOIN (
                             SELECT ct.MaThuoc, SUM(ct.SoLuong) AS SoNhap
                             FROM ChiTietNhapKho ct
@@ -316,6 +322,7 @@ namespace DermaSoft.Forms
                             WHERE CAST(pk.NgayKham AS DATE) >= @Tu
                               AND CAST(pk.NgayKham AS DATE) <= @Den
                               AND pk.IsDeleted = 0
+                              AND pk.TrangThai >= 2
                             GROUP BY ct.MaThuoc
                         ) xuat ON t.MaThuoc = xuat.MaThuoc
                         WHERE 1=1" + filterThuoc + @"

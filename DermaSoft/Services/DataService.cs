@@ -17,9 +17,10 @@ namespace DermaSoft.Services
         {
             return new List<VaiTroModel>
             {
-                new VaiTroModel { MaVaiTro = VaiTro.Admin, TenVaiTro = "Admin"   },
-                new VaiTroModel { MaVaiTro = VaiTro.BacSi, TenVaiTro = "Bác Sĩ"  },
-                new VaiTroModel { MaVaiTro = VaiTro.LeTan, TenVaiTro = "Lễ Tân"  },
+                new VaiTroModel { MaVaiTro = VaiTro.Admin,   TenVaiTro = "Admin"      },
+                new VaiTroModel { MaVaiTro = VaiTro.BacSi,   TenVaiTro = "Bác Sĩ"     },
+                new VaiTroModel { MaVaiTro = VaiTro.LeTan,   TenVaiTro = "Lễ Tân"     },
+                new VaiTroModel { MaVaiTro = VaiTro.QuanKho, TenVaiTro = "Quản Kho"   },
             };
         }
 

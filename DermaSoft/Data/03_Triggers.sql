@@ -147,7 +147,7 @@ BEGIN
     SET NOCOUNT ON;
 
     -- Chỉ cộng điểm khi TrangThai chuyển sang 1 (Đã thanh toán)
-    -- Dùng TongTien (tổng hóa đơn thực tế) thay vì TienKhachTra (tiền khách đưa)
+    -- TongTien đã = DV+Thuốc-GiảmGiá (InvoiceForm line 665)
     UPDATE tvi
     SET DiemTichLuy = DiemTichLuy + CAST(ROUND(i.TongTien / 1000, 0) AS INT)
     FROM ThanhVienInfo tvi

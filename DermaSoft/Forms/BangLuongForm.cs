@@ -28,6 +28,8 @@ namespace DermaSoft.Forms
         private Guna2Button btnDuyet;
         private Guna2Button btnThanhToan;
         private Guna2Button btnXuatPhieu;
+        private Guna2Button btnHoanTacDuyet;
+        private Guna2Button btnLichSuTT;
         private DataGridView dgvBangLuong;
 
         // ── KPI labels ────────────────────────────────────────────────────────
@@ -41,6 +43,7 @@ namespace DermaSoft.Forms
         private static readonly Color BorderInput = ColorTranslator.FromHtml("#D1E8DC");
 
         private bool _dangVeLai = false;
+        private bool _dangXuLy = false;  // Guard chặn VeLaiForm khi đang xử lý nghiệp vụ
         private DateTime _savedThang = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
         private System.Windows.Forms.Timer _timerAutoUpdate;
 
@@ -85,10 +88,19 @@ namespace DermaSoft.Forms
 
         private void VeLaiForm()
         {
-            if (_dangVeLai) return;
+            if (_dangVeLai || _dangXuLy) return;
             _dangVeLai = true;
 
             if (dtpThangNam != null) _savedThang = new DateTime(dtpThangNam.Value.Year, dtpThangNam.Value.Month, 1);
+
+            // Reset field references trước khi clear controls
+            // để tránh LoadDuLieu ghi data lên control đã bị disposed
+            dtpThangNam = null;
+            dgvBangLuong = null;
+            lblKpiTongNV = null;
+            lblKpiTongLuong = null;
+            lblKpiDaDuyet = null;
+            lblKpiDaTT = null;
 
             pnlContent.SuspendLayout();
             pnlContent.Controls.Clear();
@@ -182,28 +194,40 @@ namespace DermaSoft.Forms
                 BorderColor = BorderInput,
                 BorderRadius = 8,
             };
-            dtpThangNam.ValueChanged += (s, e) => LoadDuLieu();
+            dtpThangNam.ValueChanged += (s, e) =>
+            {
+                if (!_dangVeLai) LoadDuLieu();
+            };
             pnlToolbar.Controls.Add(dtpThangNam);
 
-            // ── 4 nút — căn phải, dàn đều ──
-            int btnW = 170;
-            int btnWXuat = 210;
-            int gap = 12;
+            // ── 6 nút — căn phải, dàn đều ──
+            int gap = 6;
             int rightEdge = w - 16;
+            int totalGap = gap * 5;
+            int availW = rightEdge - 260; // trừ phần chọn tháng bên trái
+            int btnW = Math.Max(120, (availW - totalGap) / 6);
 
-            btnXuatPhieu = TaoNut("🖨️ Xuất phiếu lương", rightEdge - btnWXuat, btnY, btnWXuat, btnH, ColorScheme.Danger);
+            btnXuatPhieu = TaoNut("🖨️ Xuất phiếu", rightEdge - btnW, btnY, btnW, btnH, ColorScheme.Danger);
             btnXuatPhieu.Click += BtnXuatPhieu_Click;
             pnlToolbar.Controls.Add(btnXuatPhieu);
 
-            btnThanhToan = TaoNut("💳 Thanh toán", rightEdge - btnWXuat - btnW - gap, btnY, btnW, btnH, GoldAccent);
+            btnLichSuTT = TaoNut("📋 Lịch sử TT", rightEdge - btnW * 2 - gap, btnY, btnW, btnH, Color.FromArgb(107, 114, 128));
+            btnLichSuTT.Click += BtnLichSuTT_Click;
+            pnlToolbar.Controls.Add(btnLichSuTT);
+
+            btnThanhToan = TaoNut("💳 Thanh toán", rightEdge - btnW * 3 - gap * 2, btnY, btnW, btnH, GoldAccent);
             btnThanhToan.Click += BtnThanhToan_Click;
             pnlToolbar.Controls.Add(btnThanhToan);
 
-            btnDuyet = TaoNut("✅ Duyệt lương", rightEdge - btnWXuat - btnW * 2 - gap * 2, btnY, btnW, btnH, ColorScheme.Info);
+            btnHoanTacDuyet = TaoNut("↩️ Hoàn tác duyệt", rightEdge - btnW * 4 - gap * 3, btnY, btnW, btnH, ColorScheme.Warning);
+            btnHoanTacDuyet.Click += BtnHoanTacDuyet_Click;
+            pnlToolbar.Controls.Add(btnHoanTacDuyet);
+
+            btnDuyet = TaoNut("✅ Duyệt lương", rightEdge - btnW * 5 - gap * 4, btnY, btnW, btnH, ColorScheme.Info);
             btnDuyet.Click += BtnDuyet_Click;
             pnlToolbar.Controls.Add(btnDuyet);
 
-            btnTinhLuong = TaoNut("📊 Tính lương", rightEdge - btnWXuat - btnW * 3 - gap * 3, btnY, btnW, btnH, ColorScheme.Primary);
+            btnTinhLuong = TaoNut("📊 Tính lương", rightEdge - btnW * 6 - gap * 5, btnY, btnW, btnH, ColorScheme.Primary);
             btnTinhLuong.Click += BtnTinhLuong_Click;
             pnlToolbar.Controls.Add(btnTinhLuong);
 
@@ -399,7 +423,7 @@ namespace DermaSoft.Forms
 
         private DateTime LayThangDangChon()
         {
-            if (dtpThangNam == null) return new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            if (dtpThangNam == null) return _savedThang;
             return new DateTime(dtpThangNam.Value.Year, dtpThangNam.Value.Month, 1);
         }
 
@@ -486,8 +510,10 @@ namespace DermaSoft.Forms
 
                 if (dgvBangLuong != null)
                 {
+                    dgvBangLuong.DataSource = null;  // Force rebind — clear trước
                     dgvBangLuong.DataSource = dt;
                     TomauTrangThai();
+                    dgvBangLuong.Refresh();
                 }
             }
             catch (Exception ex)
@@ -548,19 +574,49 @@ namespace DermaSoft.Forms
 
             int soHienCo = exists != null ? Convert.ToInt32(exists) : 0;
 
+            bool forceTinhLai = false;
+
             if (soHienCo > 0)
             {
-                var confirm = MessageBox.Show(
-                    $"Tháng {thang:MM/yyyy} đã có bảng lương ({soHienCo} NV).\n\n" +
-                    "• Chọn [Yes] → Cập nhật lại tất cả bảng lương Nháp\n" +
-                    "  (giữ nguyên bảng lương Đã duyệt/Đã TT)\n\n" +
-                    "• Chọn [No] → Hủy",
-                    "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                // Đếm số bảng lương đã duyệt/đã TT và nháp
+                object countDaDuyetObj = DatabaseConnection.ExecuteScalar(@"
+                    SELECT COUNT(*) FROM BangLuong WHERE ThangNam = @Thang AND TrangThai >= 1",
+                    p => p.AddWithValue("@Thang", thang));
+                int soDaDuyet = countDaDuyetObj != null ? Convert.ToInt32(countDaDuyetObj) : 0;
+                int soNhap = soHienCo - soDaDuyet;
 
-                if (confirm != DialogResult.Yes) return;
+                if (soDaDuyet > 0 && soNhap == 0)
+                {
+                    // Tất cả đã duyệt/TT → hỏi có muốn tính lại không
+                    var confirm = MessageBox.Show(
+                        $"Tháng {thang:MM/yyyy} đã có {soHienCo} bảng lương\n" +
+                        $"({soDaDuyet} đã duyệt/thanh toán, không còn bảng lương Nháp).\n\n" +
+                        "Bạn có muốn TÍNH LẠI TẤT CẢ?\n\n" +
+                        "• Số liệu cũ đã được lưu trong Lịch sử thanh toán\n" +
+                        "• Bảng lương sẽ được reset hoàn toàn về Nháp\n" +
+                        "• Thưởng/Khấu trừ/Ghi chú cũ sẽ bị xóa\n" +
+                        "• Số liệu mới sẽ được tính lại từ đầu",
+                        "Xác nhận tính lại", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+                    if (confirm != DialogResult.Yes) return;
+                    forceTinhLai = true;
+                }
+                else
+                {
+                    string msg = $"Tháng {thang:MM/yyyy} đã có bảng lương ({soHienCo} NV).\n\n";
+                    msg += $"• Cập nhật lại {soNhap} bảng lương Nháp\n";
+                    if (soDaDuyet > 0)
+                        msg += $"• {soDaDuyet} bảng lương Đã duyệt/Đã TT — giữ nguyên\n";
+                    msg += "\nTiếp tục?";
+
+                    var confirm = MessageBox.Show(msg,
+                        "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+                    if (confirm != DialogResult.Yes) return;
+                }
             }
 
-            TinhVaCapNhatLuong(thang, true);
+            TinhVaCapNhatLuong(thang, true, forceTinhLai);
         }
 
         /// <summary>
@@ -581,16 +637,18 @@ namespace DermaSoft.Forms
             int soNhap = countNhap != null ? Convert.ToInt32(countNhap) : 0;
             if (soNhap == 0) return;
 
-            TinhVaCapNhatLuong(thangHienTai, hienThongBao);
+            TinhVaCapNhatLuong(thangHienTai, hienThongBao, false);
         }
 
         /// <summary>
-        /// Logic tính lương chính — INSERT NV mới + UPDATE NV đã có (chỉ Nháp).
+        /// Logic tính lương chính — INSERT NV mới + UPDATE NV đã có.
+        /// forceTinhLai = true → tính lại cả bảng lương Đã duyệt/Đã TT (reset về Nháp).
         /// </summary>
-        private void TinhVaCapNhatLuong(DateTime thang, bool hienThongBao)
+        private void TinhVaCapNhatLuong(DateTime thang, bool hienThongBao, bool forceTinhLai)
         {
             DateTime dauThang = thang;
             DateTime cuoiThang = thang.AddMonths(1).AddSeconds(-1);
+            _dangXuLy = true;
 
             try
             {
@@ -603,6 +661,7 @@ namespace DermaSoft.Forms
 
                 int countInsert = 0;
                 int countUpdate = 0;
+                int countReset = 0;
 
                 foreach (DataRow nv in dtNV.Rows)
                 {
@@ -623,10 +682,10 @@ namespace DermaSoft.Forms
                     int maBangLuong = daCoRecord ? Convert.ToInt32(dtExist.Rows[0]["MaBangLuong"]) : 0;
                     int trangThai = daCoRecord ? Convert.ToInt32(dtExist.Rows[0]["TrangThai"]) : 0;
 
-                    // Bỏ qua bảng lương đã duyệt / đã TT
-                    if (daCoRecord && trangThai >= 1) continue;
+                    // Bỏ qua bảng lương đã duyệt / đã TT (trừ khi forceTinhLai)
+                    if (daCoRecord && trangThai >= 1 && !forceTinhLai) continue;
 
-                    // Lấy cấu hình lương
+                    // Lấy cấu hình lương — kiểm tra TRƯỚC khi reset
                     DataTable dtCH = DatabaseConnection.ExecuteQuery(@"
                         SELECT TOP 1 LoaiTinhLuong, DonGia, HeSoTangCa, SoGioChuanNgay, SoCaChuanNgay
                         FROM CauHinhLuong
@@ -638,7 +697,14 @@ namespace DermaSoft.Forms
                             p.AddWithValue("@Ngay", cuoiThang);
                         });
 
-                    if (dtCH.Rows.Count == 0) continue;
+                    if (dtCH.Rows.Count == 0) continue; // Không có cấu hình → bỏ qua, KHÔNG reset
+
+                    // Nếu forceTinhLai và record đã duyệt/TT → đếm reset
+                    // (UPDATE thực tế sẽ gộp chung bên dưới)
+                    if (daCoRecord && trangThai >= 1 && forceTinhLai)
+                    {
+                        countReset++;
+                    }
 
                     DataRow ch = dtCH.Rows[0];
                     string loai = ch["LoaiTinhLuong"].ToString();
@@ -751,10 +817,11 @@ namespace DermaSoft.Forms
                         luongTC = 0;
                     }
 
-                    // Lấy thưởng/khấu trừ cũ (nếu đang UPDATE) để giữ nguyên
+                    // Lấy thưởng/khấu trừ cũ (nếu đang UPDATE bảng lương Nháp thường) để giữ nguyên
+                    // Khi forceTinhLai: số liệu cũ đã lưu lịch sử → reset về 0
                     decimal thuongCu = 0, khauTruCu = 0;
                     string ghiChuCu = "";
-                    if (daCoRecord)
+                    if (daCoRecord && !forceTinhLai)
                     {
                         DataTable dtOld = DatabaseConnection.ExecuteQuery(@"
                             SELECT ThuongThem, KhauTru, GhiChu FROM BangLuong WHERE MaBangLuong = @MaBL",
@@ -772,18 +839,37 @@ namespace DermaSoft.Forms
 
                     if (daCoRecord)
                     {
-                        // UPDATE — giữ nguyên Thưởng/Khấu trừ/Ghi chú cũ
-                        DatabaseConnection.ExecuteNonQuery(@"
-                            UPDATE BangLuong SET
-                                DonGia = @DonGia, HeSoTangCa = @HeSoTC,
-                                SoBenhNhan = @SoBN, SoBNTangCa = @SoBNTC,
-                                SoGioLam = @SoGio, SoGioTangCa = @SoGioTC,
-                                SoCaDiemDanh = @SoCaDD, SoCaVang = @SoCaVang,
-                                LuongChinh = @LuongChinh, LuongTangCa = @LuongTC,
-                                TongLuong = @TongLuong
-                            WHERE MaBangLuong = @MaBL",
+                        // UPDATE — gộp tất cả thay đổi vào 1 câu SQL duy nhất
+                        // forceTinhLai: reset TrangThai=0, NguoiDuyet=NULL, NgayDuyet=NULL + xóa Thưởng/KhấuTrừ
+                        // normal: giữ nguyên TrangThai, chỉ cập nhật số liệu
+                        string updateSql = forceTinhLai
+                            ? @"UPDATE BangLuong SET
+                                    TrangThai = 0, NguoiDuyet = NULL, NgayDuyet = NULL,
+                                    MaVaiTro = @MaVT, LoaiTinhLuong = @Loai,
+                                    DonGia = @DonGia, HeSoTangCa = @HeSoTC,
+                                    SoBenhNhan = @SoBN, SoBNTangCa = @SoBNTC,
+                                    SoGioLam = @SoGio, SoGioTangCa = @SoGioTC,
+                                    SoCaDiemDanh = @SoCaDD, SoCaVang = @SoCaVang,
+                                    LuongChinh = @LuongChinh, LuongTangCa = @LuongTC,
+                                    ThuongThem = 0, KhauTru = 0, GhiChu = NULL,
+                                    TongLuong = @TongLuong
+                                WHERE MaBangLuong = @MaBL"
+                            : @"UPDATE BangLuong SET
+                                    MaVaiTro = @MaVT, LoaiTinhLuong = @Loai,
+                                    DonGia = @DonGia, HeSoTangCa = @HeSoTC,
+                                    SoBenhNhan = @SoBN, SoBNTangCa = @SoBNTC,
+                                    SoGioLam = @SoGio, SoGioTangCa = @SoGioTC,
+                                    SoCaDiemDanh = @SoCaDD, SoCaVang = @SoCaVang,
+                                    LuongChinh = @LuongChinh, LuongTangCa = @LuongTC,
+                                    ThuongThem = @Thuong, KhauTru = @KhauTru, GhiChu = @GhiChu,
+                                    TongLuong = @TongLuong
+                                WHERE MaBangLuong = @MaBL";
+
+                        DatabaseConnection.ExecuteNonQuery(updateSql,
                             p =>
                             {
+                                p.AddWithValue("@MaVT", maVaiTro);
+                                p.AddWithValue("@Loai", loai);
                                 p.AddWithValue("@DonGia", donGia);
                                 p.AddWithValue("@HeSoTC", heSoTC);
                                 p.AddWithValue("@SoBN", soBN);
@@ -794,6 +880,12 @@ namespace DermaSoft.Forms
                                 p.AddWithValue("@SoCaVang", soCaVang);
                                 p.AddWithValue("@LuongChinh", luongChinh);
                                 p.AddWithValue("@LuongTC", luongTC);
+                                if (!forceTinhLai)
+                                {
+                                    p.AddWithValue("@Thuong", thuongCu);
+                                    p.AddWithValue("@KhauTru", khauTruCu);
+                                    p.AddWithValue("@GhiChu", string.IsNullOrEmpty(ghiChuCu) ? (object)DBNull.Value : ghiChuCu);
+                                }
                                 p.AddWithValue("@TongLuong", tongLuong);
                                 p.AddWithValue("@MaBL", maBangLuong);
                             });
@@ -837,21 +929,26 @@ namespace DermaSoft.Forms
                     }
                 }
 
+                // ── Reload dữ liệu TRƯỚC khi hiện thông báo ──
+                // (MessageBox có thể trigger Resize → VeLaiForm → ghi đè data)
+                _dangXuLy = false;
+                LoadDuLieu();
+
                 if (hienThongBao)
                 {
                     string msg = $"✅ Bảng lương tháng {thang:MM/yyyy}:\n";
                     if (countInsert > 0) msg += $"• Thêm mới: {countInsert} NV\n";
                     if (countUpdate > 0) msg += $"• Cập nhật: {countUpdate} NV\n";
-                    if (countInsert == 0 && countUpdate == 0) msg += "• Không có thay đổi\n";
+                    if (countReset > 0) msg += $"• Tính lại (reset về Nháp): {countReset} NV\n";
+                    if (countInsert == 0 && countUpdate == 0 && countReset == 0) msg += "• Không có thay đổi\n";
                     msg += "\n💡 Bảng lương Nháp tự động cập nhật mỗi 5 phút.";
 
                     MessageBox.Show(msg, "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
-
-                LoadDuLieu();
             }
             catch (Exception ex)
             {
+                _dangXuLy = false;
                 if (hienThongBao)
                     MessageBox.Show("Lỗi tính lương:\n" + ex.Message,
                         "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -884,6 +981,7 @@ namespace DermaSoft.Forms
 
             if (confirm != DialogResult.Yes) return;
 
+            _dangXuLy = true;
             int maNguoiDuyet = LoginForm.NguoiDungHienTai?.MaNguoiDung ?? 0;
 
             DatabaseConnection.ExecuteNonQuery(@"
@@ -896,10 +994,54 @@ namespace DermaSoft.Forms
                     p.AddWithValue("@NguoiDuyet", maNguoiDuyet);
                 });
 
+            _dangXuLy = false;
+            LoadDuLieu();
+
             MessageBox.Show($"✅ Đã duyệt {soNhap} bảng lương.", "Thành công",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
 
+        // ══════════════════════════════════════════════════════════════════════
+        // HOÀN TÁC DUYỆT — TrangThai 1 → 0
+        // ══════════════════════════════════════════════════════════════════════
+
+        private void BtnHoanTacDuyet_Click(object sender, EventArgs e)
+        {
+            DateTime thang = LayThangDangChon();
+
+            object countDaDuyet = DatabaseConnection.ExecuteScalar(@"
+                SELECT COUNT(*) FROM BangLuong WHERE ThangNam = @Thang AND TrangThai = 1",
+                p => p.AddWithValue("@Thang", thang));
+
+            int soDaDuyet = countDaDuyet != null ? Convert.ToInt32(countDaDuyet) : 0;
+            if (soDaDuyet == 0)
+            {
+                MessageBox.Show("Không có bảng lương đã duyệt nào để hoàn tác.\n" +
+                    "(Bảng lương đã thanh toán không thể hoàn tác)",
+                    "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Hoàn tác duyệt {soDaDuyet} bảng lương tháng {thang:MM/yyyy}?\n\n" +
+                "Bảng lương sẽ chuyển về trạng thái Nháp để chỉnh sửa lại.\n" +
+                "(Bảng lương đã thanh toán không bị ảnh hưởng)",
+                "Xác nhận hoàn tác", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+            if (confirm != DialogResult.Yes) return;
+
+            _dangXuLy = true;
+            DatabaseConnection.ExecuteNonQuery(@"
+                UPDATE BangLuong
+                SET TrangThai = 0, NguoiDuyet = NULL, NgayDuyet = NULL
+                WHERE ThangNam = @Thang AND TrangThai = 1",
+                p => p.AddWithValue("@Thang", thang));
+
+            _dangXuLy = false;
             LoadDuLieu();
+
+            MessageBox.Show($"↩️ Đã hoàn tác duyệt {soDaDuyet} bảng lương về trạng thái Nháp.",
+                "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -908,6 +1050,15 @@ namespace DermaSoft.Forms
 
         private void BtnThanhToan_Click(object sender, EventArgs e)
         {
+            // Kiểm tra người dùng đang đăng nhập
+            var nguoiDung = LoginForm.NguoiDungHienTai;
+            if (nguoiDung == null || nguoiDung.MaNguoiDung <= 0)
+            {
+                MessageBox.Show("Lỗi: Không xác định được người dùng đang đăng nhập.\nVui lòng đăng nhập lại.",
+                    "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             DateTime thang = LayThangDangChon();
 
             DataTable dtDaDuyet = DatabaseConnection.ExecuteQuery(@"
@@ -935,36 +1086,72 @@ namespace DermaSoft.Forms
 
             if (confirm != DialogResult.Yes) return;
 
-            int nguoiTra = LoginForm.NguoiDungHienTai?.MaNguoiDung ?? 0;
+            int nguoiTra = nguoiDung.MaNguoiDung;
+            string loiChiTiet = null;
 
-            bool ok = DatabaseConnection.ExecuteTransaction((conn, tran) =>
+            _dangXuLy = true;
+            bool ok = false;
+            try
             {
-                foreach (DataRow r in dtDaDuyet.Rows)
+                ok = DatabaseConnection.ExecuteTransaction((conn, tran) =>
                 {
-                    int maBL = Convert.ToInt32(r["MaBangLuong"]);
-                    decimal soTien = Convert.ToDecimal(r["TongLuong"]);
-
-                    // UPDATE BangLuong → Đã TT
-                    using (var cmd = new SqlCommand(@"
-                        UPDATE BangLuong SET TrangThai = 2 WHERE MaBangLuong = @MaBL", conn, tran))
+                    // Đảm bảo bảng LichSuTraLuong tồn tại
+                    using (var cmdCheck = new SqlCommand(@"
+                        IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'LichSuTraLuong')
+                        BEGIN
+                            CREATE TABLE LichSuTraLuong (
+                                MaTraLuong   INT IDENTITY(1,1) PRIMARY KEY,
+                                MaBangLuong  INT            NOT NULL,
+                                SoTienTra    DECIMAL(18,2)  NOT NULL,
+                                PhuongThuc   NVARCHAR(50),
+                                NgayTra      DATETIME       DEFAULT GETDATE(),
+                                NguoiTra     INT            NOT NULL,
+                                GhiChu       NVARCHAR(255),
+                                FOREIGN KEY (MaBangLuong) REFERENCES BangLuong(MaBangLuong),
+                                FOREIGN KEY (NguoiTra)    REFERENCES NguoiDung(MaNguoiDung)
+                            );
+                        END", conn, tran))
                     {
-                        cmd.Parameters.AddWithValue("@MaBL", maBL);
-                        cmd.ExecuteNonQuery();
+                        cmdCheck.ExecuteNonQuery();
                     }
 
-                    // INSERT LichSuTraLuong
-                    using (var cmd = new SqlCommand(@"
-                        INSERT INTO LichSuTraLuong (MaBangLuong, SoTienTra, PhuongThuc, NguoiTra, GhiChu)
-                        VALUES (@MaBL, @SoTien, N'Chuyển khoản', @NguoiTra, @GhiChu)", conn, tran))
+                    foreach (DataRow r in dtDaDuyet.Rows)
                     {
-                        cmd.Parameters.AddWithValue("@MaBL", maBL);
-                        cmd.Parameters.AddWithValue("@SoTien", soTien);
-                        cmd.Parameters.AddWithValue("@NguoiTra", nguoiTra);
-                        cmd.Parameters.AddWithValue("@GhiChu", $"Thanh toán lương tháng {thang:MM/yyyy}");
-                        cmd.ExecuteNonQuery();
+                        int maBL = Convert.ToInt32(r["MaBangLuong"]);
+                        decimal soTien = Convert.ToDecimal(r["TongLuong"]);
+
+                        // UPDATE BangLuong → Đã TT
+                        using (var cmd = new SqlCommand(@"
+                            UPDATE BangLuong SET TrangThai = 2 WHERE MaBangLuong = @MaBL", conn, tran))
+                        {
+                            cmd.Parameters.AddWithValue("@MaBL", maBL);
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        // INSERT LichSuTraLuong — bỏ qua NV có lương 0đ (CHECK: SoTienTra > 0)
+                        if (soTien > 0)
+                        {
+                            using (var cmd = new SqlCommand(@"
+                                INSERT INTO LichSuTraLuong (MaBangLuong, SoTienTra, PhuongThuc, NguoiTra, GhiChu)
+                                VALUES (@MaBL, @SoTien, N'Chuyển khoản', @NguoiTra, @GhiChu)", conn, tran))
+                            {
+                                cmd.Parameters.AddWithValue("@MaBL", maBL);
+                                cmd.Parameters.AddWithValue("@SoTien", soTien);
+                                cmd.Parameters.AddWithValue("@NguoiTra", nguoiTra);
+                                cmd.Parameters.AddWithValue("@GhiChu", $"Thanh toán lương tháng {thang:MM/yyyy}");
+                                cmd.ExecuteNonQuery();
+                            }
+                        }
                     }
-                }
-            });
+                });
+            }
+            catch (Exception ex)
+            {
+                loiChiTiet = ex.Message;
+            }
+
+            _dangXuLy = false;
+            LoadDuLieu();
 
             if (ok)
             {
@@ -972,8 +1159,226 @@ namespace DermaSoft.Forms
                     $"Tổng: {tongTien:#,##0}đ",
                     "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+            else if (loiChiTiet != null)
+            {
+                MessageBox.Show($"❌ Thanh toán thất bại:\n{loiChiTiet}",
+                    "Lỗi thanh toán", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
 
-            LoadDuLieu();
+        // ══════════════════════════════════════════════════════════════════════
+        // LỊCH SỬ THANH TOÁN LƯƠNG
+        // ══════════════════════════════════════════════════════════════════════
+
+        private void BtnLichSuTT_Click(object sender, EventArgs e)
+        {
+            DateTime thang = LayThangDangChon();
+
+            int dlgW = 960;
+            int dlgH = 640;
+            int pad = 24;
+
+            using (var dlg = new Form
+            {
+                Text = $"Lịch sử thanh toán lương — Tháng {thang:MM/yyyy}",
+                Size = new Size(dlgW, dlgH),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.Sizable,
+                MaximizeBox = true,
+                MinimizeBox = false,
+                MinimumSize = new Size(760, 480),
+                BackColor = ColorScheme.Background,
+            })
+            {
+                int clientW = dlg.ClientSize.Width;
+                int clientH = dlg.ClientSize.Height;
+
+                // ── Header vàng gold ──
+                var pnlHeader = new Panel
+                {
+                    Dock = DockStyle.Top,
+                    Height = 76,
+                    BackColor = GoldAccent,
+                };
+                var lblTitle = new Label
+                {
+                    Text = $"📋 Lịch sử thanh toán lương",
+                    Font = AppFonts.H3,
+                    ForeColor = Color.White,
+                    AutoSize = false,
+                    Size = new Size(clientW - 30, 30),
+                    Location = new Point(20, 12),
+                };
+                var lblSubTitle = new Label
+                {
+                    Text = $"Tháng {thang:MM/yyyy}  •  Danh sách tất cả giao dịch thanh toán",
+                    Font = AppFonts.Body,
+                    ForeColor = Color.FromArgb(210, 255, 255, 255),
+                    AutoSize = false,
+                    Size = new Size(clientW - 30, 22),
+                    Location = new Point(20, 46),
+                };
+                pnlHeader.Controls.Add(lblTitle);
+                pnlHeader.Controls.Add(lblSubTitle);
+                dlg.Controls.Add(pnlHeader);
+
+                // ── KPI tổng hợp ──
+                var pnlKpi = new Panel
+                {
+                    Dock = DockStyle.Top,
+                    Height = 60,
+                    BackColor = Color.White,
+                    Padding = new Padding(pad, 10, pad, 10),
+                };
+                pnlKpi.Paint += (s, ev) =>
+                {
+                    using (var pen = new Pen(BorderInput))
+                        ev.Graphics.DrawLine(pen, 0, pnlKpi.Height - 1, pnlKpi.Width, pnlKpi.Height - 1);
+                };
+
+                var lblKpiSoGD = new Label
+                {
+                    Font = AppFonts.Body,
+                    ForeColor = ColorScheme.TextMid,
+                    AutoSize = true,
+                    Location = new Point(pad, 18),
+                };
+                pnlKpi.Controls.Add(lblKpiSoGD);
+
+                var lblKpiTong = new Label
+                {
+                    Font = AppFonts.H4,
+                    ForeColor = GoldAccent,
+                    AutoSize = true,
+                    Location = new Point(300, 14),
+                };
+                pnlKpi.Controls.Add(lblKpiTong);
+
+                dlg.Controls.Add(pnlKpi);
+
+                // ── DataGridView ──
+                var pnlBody = new Panel
+                {
+                    Dock = DockStyle.Fill,
+                    Padding = new Padding(pad, 12, pad, pad),
+                    BackColor = ColorScheme.Background,
+                };
+
+                var dgvLichSu = new DataGridView
+                {
+                    Dock = DockStyle.Fill,
+                    BackgroundColor = Color.White,
+                    BorderStyle = BorderStyle.None,
+                    CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                    GridColor = ColorScheme.Border,
+                    RowHeadersVisible = false,
+                    AllowUserToAddRows = false,
+                    AllowUserToDeleteRows = false,
+                    ReadOnly = true,
+                    SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                    AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                    DefaultCellStyle = new DataGridViewCellStyle
+                    {
+                        Font = AppFonts.Body,
+                        ForeColor = ColorScheme.TextDark,
+                        SelectionBackColor = ColorScheme.PrimaryPale,
+                        SelectionForeColor = ColorScheme.TextDark,
+                        Padding = new Padding(8, 4, 8, 4),
+                    },
+                    ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+                    {
+                        Font = AppFonts.BodyBold,
+                        ForeColor = ColorScheme.TextMid,
+                        BackColor = Color.FromArgb(249, 250, 251),
+                        Alignment = DataGridViewContentAlignment.MiddleLeft,
+                        Padding = new Padding(8, 0, 8, 0),
+                    },
+                    ColumnHeadersHeight = 42,
+                    RowTemplate = { Height = 40 },
+                    EnableHeadersVisualStyles = false,
+                    AutoGenerateColumns = false,
+                };
+
+                dgvLichSu.Columns.Add(new DataGridViewTextBoxColumn { Name = "colSTT", HeaderText = "#", FillWeight = 5F });
+                dgvLichSu.Columns.Add(new DataGridViewTextBoxColumn { Name = "colHoTen", HeaderText = "Nhân viên", FillWeight = 18F });
+                dgvLichSu.Columns.Add(new DataGridViewTextBoxColumn { Name = "colVaiTro", HeaderText = "Vai trò", FillWeight = 12F });
+                dgvLichSu.Columns.Add(new DataGridViewTextBoxColumn { Name = "colSoTien", HeaderText = "Số tiền", FillWeight = 14F });
+                dgvLichSu.Columns.Add(new DataGridViewTextBoxColumn { Name = "colPhuongThuc", HeaderText = "Phương thức", FillWeight = 12F });
+                dgvLichSu.Columns.Add(new DataGridViewTextBoxColumn { Name = "colNgayTra", HeaderText = "Ngày thanh toán", FillWeight = 16F });
+                dgvLichSu.Columns.Add(new DataGridViewTextBoxColumn { Name = "colNguoiTra", HeaderText = "Người thực hiện", FillWeight = 14F });
+                dgvLichSu.Columns.Add(new DataGridViewTextBoxColumn { Name = "colGhiChu", HeaderText = "Ghi chú", FillWeight = 14F });
+
+                // Load dữ liệu — dùng LEFT JOIN để hiển thị TẤT CẢ NV đã thanh toán
+                // (bao gồm NV có lương 0đ không có record trong LichSuTraLuong)
+                try
+                {
+                    DataTable dtLS = DatabaseConnection.ExecuteQuery(@"
+                        SELECT
+                            bl.MaBangLuong,
+                            nd.HoTen,
+                            vt.TenVaiTro,
+                            ISNULL(ls.SoTienTra, bl.TongLuong) AS SoTienTra,
+                            ISNULL(ls.PhuongThuc, CASE WHEN bl.TrangThai = 2 THEN N'—' ELSE NULL END) AS PhuongThuc,
+                            ls.NgayTra,
+                            ndTra.HoTen AS NguoiTraTen,
+                            ISNULL(ls.GhiChu, CASE WHEN bl.TrangThai = 2 AND bl.TongLuong = 0 THEN N'Lương 0đ — không tạo phiếu chi' ELSE NULL END) AS GhiChu,
+                            bl.TrangThai
+                        FROM BangLuong bl
+                        JOIN NguoiDung nd ON bl.MaNguoiDung = nd.MaNguoiDung
+                        JOIN VaiTro vt ON bl.MaVaiTro = vt.MaVaiTro
+                        LEFT JOIN LichSuTraLuong ls ON ls.MaBangLuong = bl.MaBangLuong
+                        LEFT JOIN NguoiDung ndTra ON ls.NguoiTra = ndTra.MaNguoiDung
+                        WHERE bl.ThangNam = @Thang AND bl.TrangThai = 2
+                        ORDER BY ls.NgayTra DESC, nd.HoTen",
+                        p => p.AddWithValue("@Thang", thang));
+
+                    decimal tongTienLS = 0;
+                    int stt = 0;
+
+                    foreach (DataRow r in dtLS.Rows)
+                    {
+                        stt++;
+                        decimal soTien = Convert.ToDecimal(r["SoTienTra"]);
+                        tongTienLS += soTien;
+                        string ngayTraText = r["NgayTra"] != DBNull.Value
+                            ? Convert.ToDateTime(r["NgayTra"]).ToString("dd/MM/yyyy HH:mm")
+                            : "—";
+
+                        int idx = dgvLichSu.Rows.Add(
+                            stt,
+                            r["HoTen"].ToString(),
+                            r["TenVaiTro"].ToString(),
+                            soTien.ToString("#,##0") + "đ",
+                            r["PhuongThuc"]?.ToString() ?? "—",
+                            ngayTraText,
+                            r["NguoiTraTen"] != DBNull.Value ? r["NguoiTraTen"].ToString() : "—",
+                            r["GhiChu"] != DBNull.Value ? r["GhiChu"].ToString() : ""
+                        );
+
+                        // Tô đậm cột tiền
+                        dgvLichSu.Rows[idx].Cells["colSoTien"].Style.Font = AppFonts.BodyBold;
+                        dgvLichSu.Rows[idx].Cells["colSoTien"].Style.ForeColor = soTien > 0 ? GoldAccent : ColorScheme.TextGray;
+                    }
+
+                    int soCoTien = 0;
+                    foreach (DataRow r2 in dtLS.Rows)
+                    {
+                        if (Convert.ToDecimal(r2["SoTienTra"]) > 0) soCoTien++;
+                    }
+                    lblKpiSoGD.Text = $"📊 Tổng NV đã TT: {dtLS.Rows.Count}  |  Có phiếu chi: {soCoTien}";
+                    lblKpiTong.Text = $"💰 Tổng đã thanh toán: {tongTienLS:#,##0}đ";
+                }
+                catch (Exception ex)
+                {
+                    lblKpiSoGD.Text = "Lỗi tải dữ liệu";
+                    lblKpiTong.Text = ex.Message;
+                }
+
+                pnlBody.Controls.Add(dgvLichSu);
+                dlg.Controls.Add(pnlBody);
+
+                dlg.ShowDialog();
+            }
         }
 
         // ══════════════════════════════════════════════════════════════════════

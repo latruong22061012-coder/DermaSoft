@@ -4,7 +4,7 @@ namespace DermaSoft.Models
 {
     /// <summary>
     /// Mô hình dữ liệu vai trò — đồng bộ với bảng <c>VaiTro</c> trong SQL.
-    /// Dữ liệu khởi tạo: 1=Admin, 2=Bác Sĩ, 3=Lễ Tân.
+    /// Dữ liệu khởi tạo: 1=Admin, 2=Bác Sĩ, 3=Lễ Tân, 4=Bệnh Nhân, 5=Quản Kho.
     /// </summary>
     internal class VaiTroModel
     {

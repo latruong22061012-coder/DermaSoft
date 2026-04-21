@@ -23,6 +23,12 @@ namespace DermaSoft.Forms
         private Guna2DateTimePicker _dtpNgayLoc;
         private Label _lblSoPhieu;
 
+        // ── Tìm kiếm theo SĐT ────────────────────────────────────────────────
+        private Guna2TextBox _txtTimSDT;
+
+        // ── MaPhieuKham truyền từ Dashboard ───────────────────────────────────
+        private int _maPhieuKhamTuDashboard = -1;
+
         public InvoiceForm()
         {
             InitializeComponent();
@@ -35,14 +41,71 @@ namespace DermaSoft.Forms
             btnInHoaDon.Click += BtnInHoaDon_Click;
         }
 
+        /// <summary>
+        /// Constructor nhận MaPhieuKham từ Dashboard — tự động tải phiếu khi mở.
+        /// </summary>
+        public InvoiceForm(int maPhieuKham) : this()
+        {
+            _maPhieuKhamTuDashboard = maPhieuKham;
+        }
+
         private void InvoiceForm_Load(object sender, EventArgs e)
         {
             cmbPhuongThuc.SelectedIndex = 0;
             LoadThongTinPhongKham();
             ThemPanelLocNgay();
+            ThemPanelTimKiemSDT();
             LoadDanhSachPhieuKham();
             DatTrangThaiForm(enabled: false);
             ResetTongKet();
+
+            // Auto-select phiếu khám nếu được mở từ Dashboard
+            if (_maPhieuKhamTuDashboard > 0)
+            {
+                AutoChonPhieuKham(_maPhieuKhamTuDashboard);
+            }
+        }
+
+        /// <summary>
+        /// Tự động chọn phiếu khám trong ComboBox theo MaPhieuKham.
+        /// Nếu phiếu không nằm trong ngày hiện tại, thử tìm ngày đúng.
+        /// </summary>
+        private void AutoChonPhieuKham(int maPhieuKham)
+        {
+            // Thử tìm trong danh sách hiện tại
+            for (int i = 0; i < cmbPhieuKham.Items.Count; i++)
+            {
+                var drv = cmbPhieuKham.Items[i] as DataRowView;
+                if (drv != null && Convert.ToInt32(drv["MaPhieuKham"]) == maPhieuKham)
+                {
+                    cmbPhieuKham.SelectedIndex = i;
+                    return;
+                }
+            }
+
+            // Không tìm thấy → tìm ngày khám của phiếu và chuyển DateTimePicker
+            try
+            {
+                var dtNgay = DatabaseConnection.ExecuteQuery(
+                    "SELECT CAST(NgayKham AS DATE) AS NgayKham FROM PhieuKham WHERE MaPhieuKham = @MaPK",
+                    p => p.AddWithValue("@MaPK", maPhieuKham));
+                if (dtNgay != null && dtNgay.Rows.Count > 0 && _dtpNgayLoc != null)
+                {
+                    DateTime ngay = Convert.ToDateTime(dtNgay.Rows[0]["NgayKham"]);
+                    _dtpNgayLoc.Value = ngay;
+                    // Retry
+                    for (int i = 0; i < cmbPhieuKham.Items.Count; i++)
+                    {
+                        var drv = cmbPhieuKham.Items[i] as DataRowView;
+                        if (drv != null && Convert.ToInt32(drv["MaPhieuKham"]) == maPhieuKham)
+                        {
+                            cmbPhieuKham.SelectedIndex = i;
+                            return;
+                        }
+                    }
+                }
+            }
+            catch { }
         }
 
         /// <summary>
@@ -126,6 +189,135 @@ namespace DermaSoft.Forms
             pnlNgay.Controls.Add(_lblSoPhieu);
 
             pnlPhieuKham.Controls.Add(pnlNgay);
+        }
+
+        /// <summary>
+        /// Nhúng ô tìm kiếm theo SĐT bệnh nhân vào pnlPhieuKham.
+        /// </summary>
+        private void ThemPanelTimKiemSDT()
+        {
+            pnlPhieuKham.Height += 44;
+
+            var pnlTim = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 40,
+                BackColor = Color.Transparent,
+            };
+
+            var lblTim = new Label
+            {
+                Text = "Tìm SĐT:",
+                Font = new Font("Segoe UI", 10.2f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(15, 92, 77),
+                AutoSize = true,
+                Location = new Point(0, 9),
+            };
+
+            _txtTimSDT = new Guna2TextBox
+            {
+                PlaceholderText = "Nhập SĐT bệnh nhân...",
+                Font = new Font("Segoe UI", 10f),
+                ForeColor = Color.FromArgb(68, 88, 112),
+                FillColor = Color.FromArgb(249, 250, 251),
+                BorderColor = Color.SeaGreen,
+                BorderRadius = 10,
+                Location = new Point(100, 1),
+                Size = new Size(200, 36),
+            };
+
+            var btnTimSDT = new Guna2Button
+            {
+                Text = "🔍 Tìm",
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                ForeColor = Color.White,
+                FillColor = Color.FromArgb(15, 92, 77),
+                BorderRadius = 10,
+                Size = new Size(90, 30),
+                Location = new Point(310, 4),
+                Cursor = Cursors.Hand,
+            };
+            btnTimSDT.Click += (s, ev) => TimKiemTheoSDT();
+            _txtTimSDT.KeyDown += (s, ev) =>
+            {
+                if (ev.KeyCode == Keys.Enter) { ev.SuppressKeyPress = true; TimKiemTheoSDT(); }
+            };
+
+            pnlTim.Controls.Add(lblTim);
+            pnlTim.Controls.Add(_txtTimSDT);
+            pnlTim.Controls.Add(btnTimSDT);
+            pnlPhieuKham.Controls.Add(pnlTim);
+        }
+
+        /// <summary>
+        /// Tìm kiếm phiếu khám theo SĐT bệnh nhân.
+        /// </summary>
+        private void TimKiemTheoSDT()
+        {
+            string sdt = _txtTimSDT?.Text?.Trim();
+            if (string.IsNullOrEmpty(sdt))
+            {
+                MessageBox.Show("Vui lòng nhập số điện thoại.",
+                    "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                const string sql = @"
+                    SELECT TOP 10
+                        pk.MaPhieuKham,
+                        N'PK#' + RIGHT(N'0000' + CAST(pk.MaPhieuKham AS NVARCHAR(10)), 4)
+                            + N' — ' + bn.HoTen
+                            + N' — ' + FORMAT(pk.NgayKham, N'dd/MM HH:mm')
+                            + CASE pk.TrangThai
+                                WHEN 2 THEN N' (Chờ thanh toán)'
+                                WHEN 3 THEN N' (Đã thanh toán ✓)'
+                                ELSE N''
+                              END                             AS TenHienThi
+                    FROM PhieuKham pk
+                    JOIN BenhNhan  bn ON pk.MaBenhNhan = bn.MaBenhNhan
+                    WHERE pk.IsDeleted = 0
+                      AND bn.SoDienThoai LIKE @SDT
+                      AND (
+                            (pk.TrangThai = 2 AND NOT EXISTS (
+                                SELECT 1 FROM HoaDon hd
+                                WHERE hd.MaPhieuKham = pk.MaPhieuKham
+                                  AND hd.TrangThai = 1
+                                  AND hd.IsDeleted = 0))
+                            OR pk.TrangThai = 3
+                           )
+                    ORDER BY pk.NgayKham DESC";
+
+                DataTable dt = DatabaseConnection.ExecuteQuery(sql,
+                    p => p.AddWithValue("@SDT", "%" + sdt + "%"));
+
+                if (dt == null || dt.Rows.Count == 0)
+                {
+                    MessageBox.Show($"Không tìm thấy hóa đơn cho SĐT \"{sdt}\".",
+                        "Không tìm thấy", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Thêm dòng trống đầu
+                DataRow r = dt.NewRow();
+                r["MaPhieuKham"] = -1;
+                r["TenHienThi"] = "-- Chọn phiếu khám --";
+                dt.Rows.InsertAt(r, 0);
+
+                cmbPhieuKham.DataSource = dt;
+                cmbPhieuKham.DisplayMember = "TenHienThi";
+                cmbPhieuKham.ValueMember = "MaPhieuKham";
+                cmbPhieuKham.SelectedIndex = dt.Rows.Count > 1 ? 1 : 0;
+
+                if (_lblSoPhieu != null)
+                    _lblSoPhieu.Text = $"({dt.Rows.Count - 1} kết quả SĐT)";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi tìm kiếm:\n" + ex.Message,
+                    "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         // ══════════════════════════════════════════════════════════════════════

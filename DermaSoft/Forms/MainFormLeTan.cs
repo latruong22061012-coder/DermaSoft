@@ -309,6 +309,19 @@ namespace DermaSoft.Forms
             ChuyenMenu(tenMenu, null);
         }
 
+        // MaPhieuKham tạm lưu khi điều hướng từ Dashboard → Thanh Toán
+        private int _maPhieuKhamChoThanhToan = -1;
+
+        /// <summary>
+        /// Chuyển menu Thanh Toán Hóa Đơn và tự động mở phiếu khám.
+        /// </summary>
+        internal void ChuyenMenuThanhToan(int maPhieuKham)
+        {
+            _maPhieuKhamChoThanhToan = maPhieuKham;
+            ChuyenMenu("Thanh Toán Hóa Đơn");
+            _maPhieuKhamChoThanhToan = -1;
+        }
+
         /// <summary>
         /// Chuyển menu và truyền SĐT bệnh nhân (dùng khi tiếp nhận từ Dashboard).
         /// </summary>
@@ -364,7 +377,11 @@ namespace DermaSoft.Forms
                         ? new TiepNhanForm(soDienThoaiBN)
                         : new TiepNhanForm();
                     break;
-                case "Thanh Toán Hóa Đơn":  frm = new InvoiceForm();        break;
+                case "Thanh Toán Hóa Đơn":
+                    frm = _maPhieuKhamChoThanhToan > 0
+                        ? new InvoiceForm(_maPhieuKhamChoThanhToan)
+                        : new InvoiceForm();
+                    break;
                 case "Thẻ Thành Viên":      frm = new MemberForm();         break;
                 case "Hồ Sơ Cá Nhân":       frm = new ProfileForm();        break;
             }

@@ -453,13 +453,20 @@ namespace DermaSoft.Forms
             {
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(
-                    @"SELECT MaThuoc, TenThuoc, DonViTinh, DonGia, SoLuongTon
-                      FROM Thuoc
-                      WHERE IsDeleted = 0
+                    @"SELECT t.MaThuoc, t.TenThuoc, t.DonViTinh, t.DonGia, 
+                             ISNULL(ton.TonThucTe, 0) AS SoLuongTon
+                      FROM Thuoc t
+                      LEFT JOIN (
+                          SELECT MaThuoc, SUM(SoLuongConLai) AS TonThucTe
+                          FROM ChiTietNhapKho
+                          WHERE SoLuongConLai > 0
+                          GROUP BY MaThuoc
+                      ) ton ON t.MaThuoc = ton.MaThuoc
+                      WHERE t.IsDeleted = 0
                         AND (@Keyword = '' 
-                             OR TenThuoc LIKE '%' + @Keyword + '%'
-                             OR DonViTinh LIKE '%' + @Keyword + '%')
-                      ORDER BY TenThuoc", conn))
+                             OR t.TenThuoc LIKE '%' + @Keyword + '%'
+                             OR t.DonViTinh LIKE '%' + @Keyword + '%')
+                      ORDER BY t.TenThuoc", conn))
                 {
                     cmd.Parameters.AddWithValue("@Keyword", keyword);
 

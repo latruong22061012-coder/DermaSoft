@@ -1,5 +1,4 @@
 ﻿using System;
-using System;
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
@@ -277,6 +276,10 @@ namespace DermaSoft.Forms
                     main = new MainFormBacSi();
                     break;
 
+                case DermaSoft.Enums.VaiTro.QuanKho:
+                    main = new MainFormQuanKho();
+                    break;
+
                 case DermaSoft.Enums.VaiTro.Admin:
                 default:
                     main = new MainForm();
@@ -293,6 +296,7 @@ namespace DermaSoft.Forms
                 if (main is MainForm mf) dangXuat = mf.DangXuat;
                 else if (main is MainFormBacSi mbs) dangXuat = mbs.DangXuat;
                 else if (main is MainFormLeTan mlt) dangXuat = mlt.DangXuat;
+                else if (main is MainFormQuanKho mqk) dangXuat = mqk.DangXuat;
 
                 if (dangXuat)
                 {

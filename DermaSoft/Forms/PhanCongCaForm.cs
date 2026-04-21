@@ -535,7 +535,7 @@ namespace DermaSoft.Forms
                         @"SELECT nd.MaNguoiDung, nd.HoTen + ' (' + vt.TenVaiTro + ')' AS Display
                           FROM NguoiDung nd
                           JOIN VaiTro vt ON nd.MaVaiTro = vt.MaVaiTro
-                          WHERE nd.TrangThaiTK = 1 AND nd.IsDeleted = 0 AND nd.MaVaiTro IN (1,2,3)
+                          WHERE nd.TrangThaiTK = 1 AND nd.IsDeleted = 0 AND nd.MaVaiTro IN (1,2,3,5)
                           ORDER BY nd.MaVaiTro, nd.HoTen", conn))
                     using (var reader = cmd.ExecuteReader())
                     {

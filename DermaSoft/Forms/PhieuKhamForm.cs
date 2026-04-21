@@ -594,6 +594,10 @@ namespace DermaSoft.Forms
 
                 dgvDonThuoc.DataSource = dt ?? new DataTable();
 
+                // Ẩn cột MaThuoc khỏi UI
+                if (dgvDonThuoc.Columns.Contains("MaThuoc"))
+                    dgvDonThuoc.Columns["MaThuoc"].Visible = false;
+
                 // Style hàng xen kẽ
                 foreach (DataGridViewRow row in dgvDonThuoc.Rows)
                     row.DefaultCellStyle.BackColor = row.Index % 2 == 0 ? Color.White : ClrRowAlt;
@@ -630,22 +634,32 @@ namespace DermaSoft.Forms
 
             string lieuDung = txtLieuDung.Text.Trim();
 
-            // Kiểm tra tồn kho
+            // Kiểm tra tồn kho — tính TỔNG SoLuongConLai của tất cả lô còn hạn
             DataTable dtTon = DatabaseConnection.ExecuteQuery(
-                "SELECT SoLuongConLai FROM VW_TonKhoTheoLo WHERE MaThuoc = @MT AND UuTienFEFO = 1",
+                "SELECT ISNULL(SUM(SoLuongConLai), 0) AS TonKho FROM ChiTietNhapKho WHERE MaThuoc = @MT AND SoLuongConLai > 0 AND HanSuDung > GETDATE()",
                 p => p.AddWithValue("@MT", maThuoc));
 
-            if (dtTon == null || dtTon.Rows.Count == 0)
+            int tonKho = dtTon != null && dtTon.Rows.Count > 0
+                ? Convert.ToInt32(dtTon.Rows[0]["TonKho"]) : 0;
+
+            // Tính số lượng đã kê (nếu cập nhật: chỉ kiểm tra phần chênh lệch tăng thêm)
+            DataTable dtCurrent = DatabaseConnection.ExecuteQuery(
+                "SELECT SoLuong FROM ChiTietDonThuoc WHERE MaPhieuKham = @MaPK AND MaThuoc = @MT",
+                p => { p.AddWithValue("@MaPK", _maPhieuKham); p.AddWithValue("@MT", maThuoc); });
+            int slHienTai = dtCurrent != null && dtCurrent.Rows.Count > 0
+                ? Convert.ToInt32(dtCurrent.Rows[0]["SoLuong"]) : 0;
+            int slCanThem = soLuong - slHienTai; // chênh lệch cần xuất thêm (âm = hoàn trả)
+
+            if (tonKho <= 0 && slHienTai == 0)
             {
                 MessageBox.Show("Thuốc này hiện không có trong kho.",
                     "Hết tồn kho", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            int tonKho = Convert.ToInt32(dtTon.Rows[0]["SoLuongConLai"]);
-            if (soLuong > tonKho)
+            if (slCanThem > 0 && slCanThem > tonKho)
             {
-                MessageBox.Show($"Số lượng yêu cầu ({soLuong}) vượt tồn kho ({tonKho}).",
+                MessageBox.Show($"Không đủ tồn kho.\nSố lượng muốn kê: {soLuong}\nĐã kê: {slHienTai}\nCần thêm: {slCanThem}\nTồn kho hiện có: {tonKho}",
                     "Không đủ tồn kho", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -689,6 +703,48 @@ namespace DermaSoft.Forms
                         });
                 }
 
+                // Cập nhật tồn kho theo chênh lệch (FEFO — trải đều qua nhiều lô)
+                if (slCanThem > 0)
+                {
+                    DatabaseConnection.ExecuteNonQuery(@"
+                        DECLARE @Rem INT = @Chenh;
+                        WHILE @Rem > 0
+                        BEGIN
+                            DECLARE @pn INT = NULL, @mt2 INT, @qty INT;
+                            SELECT TOP 1 @pn = MaPhieuNhap, @mt2 = MaThuoc, @qty = SoLuongConLai
+                            FROM ChiTietNhapKho
+                            WHERE MaThuoc = @MT AND SoLuongConLai > 0 AND HanSuDung > GETDATE()
+                            ORDER BY HanSuDung ASC;
+                            IF @pn IS NULL BREAK;
+                            DECLARE @d INT = CASE WHEN @qty >= @Rem THEN @Rem ELSE @qty END;
+                            UPDATE ChiTietNhapKho SET SoLuongConLai = SoLuongConLai - @d
+                            WHERE MaPhieuNhap = @pn AND MaThuoc = @mt2;
+                            SET @Rem = @Rem - @d;
+                        END
+                        UPDATE Thuoc SET SoLuongTon = SoLuongTon - @Chenh WHERE MaThuoc = @MT;",
+                        p => { p.AddWithValue("@MT", maThuoc); p.AddWithValue("@Chenh", slCanThem); });
+                }
+                else if (slCanThem < 0)
+                {
+                    DatabaseConnection.ExecuteNonQuery(@"
+                        DECLARE @Rem INT = -@Chenh;
+                        WHILE @Rem > 0
+                        BEGIN
+                            DECLARE @pn INT = NULL, @mt2 INT, @cap INT, @cur INT;
+                            SELECT TOP 1 @pn = MaPhieuNhap, @mt2 = MaThuoc, @cap = SoLuong, @cur = SoLuongConLai
+                            FROM ChiTietNhapKho
+                            WHERE MaThuoc = @MT AND SoLuongConLai < SoLuong
+                            ORDER BY HanSuDung ASC;
+                            IF @pn IS NULL BREAK;
+                            DECLARE @d INT = CASE WHEN (@cap - @cur) >= @Rem THEN @Rem ELSE (@cap - @cur) END;
+                            UPDATE ChiTietNhapKho SET SoLuongConLai = SoLuongConLai + @d
+                            WHERE MaPhieuNhap = @pn AND MaThuoc = @mt2;
+                            SET @Rem = @Rem - @d;
+                        END
+                        UPDATE Thuoc SET SoLuongTon = SoLuongTon + (-@Chenh) WHERE MaThuoc = @MT;",
+                        p => { p.AddWithValue("@MT", maThuoc); p.AddWithValue("@Chenh", slCanThem); });
+                }
+
                 // Reset input
                 txtSoLuong.Text = "";
                 txtLieuDung.Text = "";
@@ -725,6 +781,13 @@ namespace DermaSoft.Forms
 
             try
             {
+                // Lấy số lượng cần hoàn trả trước khi xóa
+                DataTable dtSL = DatabaseConnection.ExecuteQuery(
+                    "SELECT SoLuong FROM ChiTietDonThuoc WHERE MaPhieuKham=@MaPK AND MaThuoc=@MT",
+                    p => { p.AddWithValue("@MaPK", _maPhieuKham); p.AddWithValue("@MT", maThuocXoa); });
+                int slHoanTra = dtSL != null && dtSL.Rows.Count > 0
+                    ? Convert.ToInt32(dtSL.Rows[0]["SoLuong"]) : 0;
+
                 DatabaseConnection.ExecuteNonQuery(
                     "DELETE FROM ChiTietDonThuoc WHERE MaPhieuKham=@MaPK AND MaThuoc=@MT",
                     p =>
@@ -732,6 +795,28 @@ namespace DermaSoft.Forms
                         p.AddWithValue("@MaPK", _maPhieuKham);
                         p.AddWithValue("@MT", maThuocXoa);
                     });
+
+                // Hoàn trả tồn kho — trả về lô sớm hết hạn nhất (FEFO, multi-batch)
+                if (slHoanTra > 0)
+                {
+                    DatabaseConnection.ExecuteNonQuery(@"
+                        DECLARE @Rem INT = @SL;
+                        WHILE @Rem > 0
+                        BEGIN
+                            DECLARE @pn INT = NULL, @mt2 INT, @cap INT, @cur INT;
+                            SELECT TOP 1 @pn = MaPhieuNhap, @mt2 = MaThuoc, @cap = SoLuong, @cur = SoLuongConLai
+                            FROM ChiTietNhapKho
+                            WHERE MaThuoc = @MT AND SoLuongConLai < SoLuong
+                            ORDER BY HanSuDung ASC;
+                            IF @pn IS NULL BREAK;
+                            DECLARE @d INT = CASE WHEN (@cap - @cur) >= @Rem THEN @Rem ELSE (@cap - @cur) END;
+                            UPDATE ChiTietNhapKho SET SoLuongConLai = SoLuongConLai + @d
+                            WHERE MaPhieuNhap = @pn AND MaThuoc = @mt2;
+                            SET @Rem = @Rem - @d;
+                        END
+                        UPDATE Thuoc SET SoLuongTon = SoLuongTon + @SL WHERE MaThuoc = @MT;",
+                        p => { p.AddWithValue("@MT", maThuocXoa); p.AddWithValue("@SL", slHoanTra); });
+                }
 
                 LoadDonThuocHienTai();
             }
@@ -744,7 +829,107 @@ namespace DermaSoft.Forms
 
         private void DgvDonThuoc_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
-            // Sẽ xử lý inline edit SoLuong/LieuDung trực tiếp trên lưới ở phiên bản sau
+            if (e.RowIndex < 0) return;
+            string colName = dgvDonThuoc.Columns[e.ColumnIndex]?.Name;
+            if (colName != "colSoLuong" && colName != "colLieuDung") return;
+
+            DataTable dt = dgvDonThuoc.DataSource as DataTable;
+            if (dt == null || e.RowIndex >= dt.Rows.Count) return;
+
+            int maThuocEdit = Convert.ToInt32(dt.Rows[e.RowIndex]["MaThuoc"]);
+
+            if (colName == "colSoLuong")
+            {
+                object cellVal = dgvDonThuoc.Rows[e.RowIndex].Cells["colSoLuong"].Value;
+                if (!int.TryParse(cellVal?.ToString(), out int slMoi) || slMoi <= 0)
+                {
+                    MessageBox.Show("Số lượng phải là số nguyên dương.",
+                        "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    LoadDonThuocHienTai();
+                    return;
+                }
+
+                // Lấy SL cũ từ DB
+                DataTable dtOld = DatabaseConnection.ExecuteQuery(
+                    "SELECT SoLuong FROM ChiTietDonThuoc WHERE MaPhieuKham=@MaPK AND MaThuoc=@MT",
+                    p => { p.AddWithValue("@MaPK", _maPhieuKham); p.AddWithValue("@MT", maThuocEdit); });
+                int slCu = dtOld != null && dtOld.Rows.Count > 0 ? Convert.ToInt32(dtOld.Rows[0]["SoLuong"]) : 0;
+                int chenh = slMoi - slCu;
+
+                if (chenh == 0) return;
+
+                // Kiểm tra tồn kho nếu tăng SL
+                if (chenh > 0)
+                {
+                    DataTable dtTonE = DatabaseConnection.ExecuteQuery(
+                        "SELECT ISNULL(SUM(SoLuongConLai), 0) AS TonKho FROM ChiTietNhapKho WHERE MaThuoc=@MT AND SoLuongConLai > 0 AND HanSuDung > GETDATE()",
+                        p => p.AddWithValue("@MT", maThuocEdit));
+                    int tonE = dtTonE != null && dtTonE.Rows.Count > 0 ? Convert.ToInt32(dtTonE.Rows[0]["TonKho"]) : 0;
+                    if (chenh > tonE)
+                    {
+                        MessageBox.Show($"Không đủ tồn kho.\nCần thêm: {chenh}\nTồn kho: {tonE}",
+                            "Không đủ tồn kho", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        LoadDonThuocHienTai();
+                        return;
+                    }
+                }
+
+                // Cập nhật DB
+                DatabaseConnection.ExecuteNonQuery(
+                    "UPDATE ChiTietDonThuoc SET SoLuong=@SL WHERE MaPhieuKham=@MaPK AND MaThuoc=@MT",
+                    p => { p.AddWithValue("@SL", slMoi); p.AddWithValue("@MaPK", _maPhieuKham); p.AddWithValue("@MT", maThuocEdit); });
+
+                // Cập nhật tồn kho FEFO (multi-batch)
+                if (chenh > 0)
+                {
+                    DatabaseConnection.ExecuteNonQuery(@"
+                        DECLARE @Rem INT = @Chenh;
+                        WHILE @Rem > 0
+                        BEGIN
+                            DECLARE @pn INT = NULL, @mt2 INT, @qty INT;
+                            SELECT TOP 1 @pn = MaPhieuNhap, @mt2 = MaThuoc, @qty = SoLuongConLai
+                            FROM ChiTietNhapKho
+                            WHERE MaThuoc = @MT AND SoLuongConLai > 0 AND HanSuDung > GETDATE()
+                            ORDER BY HanSuDung ASC;
+                            IF @pn IS NULL BREAK;
+                            DECLARE @d INT = CASE WHEN @qty >= @Rem THEN @Rem ELSE @qty END;
+                            UPDATE ChiTietNhapKho SET SoLuongConLai = SoLuongConLai - @d
+                            WHERE MaPhieuNhap = @pn AND MaThuoc = @mt2;
+                            SET @Rem = @Rem - @d;
+                        END
+                        UPDATE Thuoc SET SoLuongTon = SoLuongTon - @Chenh WHERE MaThuoc = @MT;",
+                        p => { p.AddWithValue("@MT", maThuocEdit); p.AddWithValue("@Chenh", chenh); });
+                }
+                else
+                {
+                    DatabaseConnection.ExecuteNonQuery(@"
+                        DECLARE @Rem INT = -@Chenh;
+                        WHILE @Rem > 0
+                        BEGIN
+                            DECLARE @pn INT = NULL, @mt2 INT, @cap INT, @cur INT;
+                            SELECT TOP 1 @pn = MaPhieuNhap, @mt2 = MaThuoc, @cap = SoLuong, @cur = SoLuongConLai
+                            FROM ChiTietNhapKho
+                            WHERE MaThuoc = @MT AND SoLuongConLai < SoLuong
+                            ORDER BY HanSuDung ASC;
+                            IF @pn IS NULL BREAK;
+                            DECLARE @d INT = CASE WHEN (@cap - @cur) >= @Rem THEN @Rem ELSE (@cap - @cur) END;
+                            UPDATE ChiTietNhapKho SET SoLuongConLai = SoLuongConLai + @d
+                            WHERE MaPhieuNhap = @pn AND MaThuoc = @mt2;
+                            SET @Rem = @Rem - @d;
+                        END
+                        UPDATE Thuoc SET SoLuongTon = SoLuongTon + (-@Chenh) WHERE MaThuoc = @MT;",
+                        p => { p.AddWithValue("@MT", maThuocEdit); p.AddWithValue("@Chenh", chenh); });
+                }
+
+                LoadDonThuocHienTai();
+            }
+            else if (colName == "colLieuDung")
+            {
+                string lieuMoi = dgvDonThuoc.Rows[e.RowIndex].Cells["colLieuDung"].Value?.ToString() ?? "";
+                DatabaseConnection.ExecuteNonQuery(
+                    "UPDATE ChiTietDonThuoc SET LieuDung=@LD WHERE MaPhieuKham=@MaPK AND MaThuoc=@MT",
+                    p => { p.AddWithValue("@LD", lieuMoi); p.AddWithValue("@MaPK", _maPhieuKham); p.AddWithValue("@MT", maThuocEdit); });
+            }
         }
 
         private void DgvDonThuoc_DefaultValuesNeeded(object sender, DataGridViewRowEventArgs e)
@@ -1308,17 +1493,31 @@ namespace DermaSoft.Forms
                 TextAlign = HorizontalAlignment.Center,
                 Margin = new Padding(8, 0, 0, 0),
             };
-            var txtLieu2 = new Guna.UI2.WinForms.Guna2TextBox
+            var cboLieu2 = new Guna.UI2.WinForms.Guna2ComboBox
             {
                 Dock = DockStyle.Right,
                 Width = 260,
-                PlaceholderText = "Liều dùng (vd: 2 lần/ngày, sau ăn)",
                 BorderRadius = 8,
                 BorderColor = Color.FromArgb(209, 213, 219),
                 FillColor = Color.White,
                 Font = new Font("Segoe UI", 9.5f),
                 Margin = new Padding(6, 0, 0, 0),
+                DropDownStyle = ComboBoxStyle.DropDown,
             };
+            cboLieu2.Items.AddRange(new object[]
+            {
+                "1 lần/ngày, sau ăn",
+                "2 lần/ngày, sau ăn",
+                "3 lần/ngày, sau ăn",
+                "1 lần/ngày, trước ăn",
+                "2 lần/ngày, trước ăn",
+                "Sáng 1 viên, tối 1 viên",
+                "Bôi 2 lần/ngày",
+                "Bôi 3 lần/ngày",
+                "Bôi vùng da tổn thương",
+                "Uống khi cần",
+                "Theo chỉ dẫn bác sĩ",
+            });
             var txtSL2 = new Guna.UI2.WinForms.Guna2TextBox
             {
                 Dock = DockStyle.Right,
@@ -1354,7 +1553,7 @@ namespace DermaSoft.Forms
 
             pnlAdd.Controls.Add(cboThuoc2);
             pnlAdd.Controls.Add(txtSL2);
-            pnlAdd.Controls.Add(txtLieu2);
+            pnlAdd.Controls.Add(cboLieu2);
             pnlAdd.Controls.Add(btnThem2);
             card.Controls.Add(pnlAdd);
 
@@ -1392,6 +1591,7 @@ namespace DermaSoft.Forms
             dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_SL", DataPropertyName = "SoLuong", HeaderText = "SL", FillWeight = 60, ReadOnly = false });
             dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_Lieu", DataPropertyName = "LieuDung", HeaderText = "Liều dùng", FillWeight = 220, ReadOnly = false });
             dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_HSD", DataPropertyName = "HanSuDung", HeaderText = "HSD", FillWeight = 90, ReadOnly = true });
+            dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_MaThuoc", DataPropertyName = "MaThuoc", Visible = false });
             dgv2.Columns.Add(new DataGridViewButtonColumn
             {
                 Name = "c2_Xoa",
@@ -1449,23 +1649,114 @@ namespace DermaSoft.Forms
             };
             loadThuoc();
 
+            // ── Inline edit SL / Liều dùng trực tiếp trên lưới ────────────
+            dgv2.CellEndEdit += (s, e) =>
+            {
+                if (e.RowIndex < 0) return;
+                string colName = dgv2.Columns[e.ColumnIndex]?.Name;
+                if (colName != "c2_SL" && colName != "c2_Lieu") return;
+
+                DataTable dtSrc = dgv2.DataSource as DataTable;
+                if (dtSrc == null || e.RowIndex >= dtSrc.Rows.Count) return;
+
+                int maThuocEdit = Convert.ToInt32(dtSrc.Rows[e.RowIndex]["MaThuoc"]);
+
+                if (colName == "c2_SL")
+                {
+                    // Sửa số lượng → tính chênh lệch → cập nhật tồn kho
+                    object cellVal = dgv2.Rows[e.RowIndex].Cells["c2_SL"].Value;
+                    if (!int.TryParse(cellVal?.ToString(), out int slMoi) || slMoi <= 0)
+                    {
+                        MessageBox.Show("Số lượng phải là số nguyên dương.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        loadThuoc();
+                        return;
+                    }
+
+                    // Lấy SL cũ từ DB
+                    DataTable dtOld = DatabaseConnection.ExecuteQuery(
+                        "SELECT SoLuong FROM ChiTietDonThuoc WHERE MaPhieuKham=@MaPK AND MaThuoc=@MT",
+                        p => { p.AddWithValue("@MaPK", _maPhieuKham); p.AddWithValue("@MT", maThuocEdit); });
+                    int slCu = dtOld != null && dtOld.Rows.Count > 0 ? Convert.ToInt32(dtOld.Rows[0]["SoLuong"]) : 0;
+                    int chenh = slMoi - slCu;
+
+                    if (chenh == 0) return;
+
+                    // Kiểm tra tồn kho nếu tăng SL
+                    if (chenh > 0)
+                    {
+                        DataTable dtTonE = DatabaseConnection.ExecuteQuery(
+                            "SELECT ISNULL(SUM(SoLuongConLai), 0) AS TonKho FROM ChiTietNhapKho WHERE MaThuoc=@MT AND SoLuongConLai > 0 AND HanSuDung > GETDATE()",
+                            p => p.AddWithValue("@MT", maThuocEdit));
+                        int tonE = dtTonE != null && dtTonE.Rows.Count > 0 ? Convert.ToInt32(dtTonE.Rows[0]["TonKho"]) : 0;
+                        if (chenh > tonE)
+                        {
+                            MessageBox.Show($"Không đủ tồn kho.\nCần thêm: {chenh}\nTồn kho: {tonE}", "Không đủ tồn kho", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            loadThuoc();
+                            return;
+                        }
+                    }
+
+                    // Cập nhật DB
+                    DatabaseConnection.ExecuteNonQuery(
+                        "UPDATE ChiTietDonThuoc SET SoLuong=@SL WHERE MaPhieuKham=@MaPK AND MaThuoc=@MT",
+                        p => { p.AddWithValue("@SL", slMoi); p.AddWithValue("@MaPK", _maPhieuKham); p.AddWithValue("@MT", maThuocEdit); });
+
+                    // Cập nhật tồn kho FEFO
+                    DatabaseConnection.ExecuteNonQuery(@"
+                        UPDATE TOP(1) ChiTietNhapKho
+                        SET SoLuongConLai = SoLuongConLai - @Chenh
+                        WHERE MaThuoc = @MT
+                          AND HanSuDung = (
+                              SELECT TOP 1 HanSuDung FROM ChiTietNhapKho
+                              WHERE MaThuoc = @MT AND SoLuongConLai > 0
+                                AND HanSuDung > GETDATE()
+                              ORDER BY HanSuDung ASC);
+                        UPDATE Thuoc SET SoLuongTon = SoLuongTon - @Chenh WHERE MaThuoc = @MT;",
+                        p => { p.AddWithValue("@MT", maThuocEdit); p.AddWithValue("@Chenh", chenh); });
+
+                    loadThuoc();
+                }
+                else if (colName == "c2_Lieu")
+                {
+                    // Sửa liều dùng → chỉ cập nhật text, không ảnh hưởng tồn kho
+                    string lieuMoi = dgv2.Rows[e.RowIndex].Cells["c2_Lieu"].Value?.ToString() ?? "";
+                    DatabaseConnection.ExecuteNonQuery(
+                        "UPDATE ChiTietDonThuoc SET LieuDung=@LD WHERE MaPhieuKham=@MaPK AND MaThuoc=@MT",
+                        p => { p.AddWithValue("@LD", lieuMoi); p.AddWithValue("@MaPK", _maPhieuKham); p.AddWithValue("@MT", maThuocEdit); });
+                }
+            };
+
             btnThem2.Click += (s, e) =>
             {
                 if (cboThuoc2.SelectedValue == null) return;
                 int maThuoc = Convert.ToInt32(cboThuoc2.SelectedValue);
                 if (!int.TryParse(txtSL2.Text.Trim(), out int sl) || sl <= 0) sl = 1;
-                string lieu = txtLieu2.Text.Trim();
+                string lieu = cboLieu2.Text.Trim();
 
                 // Kiểm tra tồn kho trước khi kê
                 DataTable dtTon = DatabaseConnection.ExecuteQuery(
-                    "SELECT ISNULL(SUM(SoLuongConLai), 0) AS TonKho FROM ChiTietNhapKho WHERE MaThuoc=@MT AND HanSuDung > GETDATE()",
+                    "SELECT ISNULL(SUM(SoLuongConLai), 0) AS TonKho FROM ChiTietNhapKho WHERE MaThuoc=@MT AND SoLuongConLai > 0 AND HanSuDung > GETDATE()",
                     p => p.AddWithValue("@MT", maThuoc));
                 int tonKho = dtTon != null && dtTon.Rows.Count > 0
                     ? Convert.ToInt32(dtTon.Rows[0]["TonKho"]) : 0;
-                if (tonKho < sl)
+
+                // Tính chênh lệch nếu thuốc đã có trong đơn
+                DataTable dtExist = DatabaseConnection.ExecuteQuery(
+                    "SELECT SoLuong FROM ChiTietDonThuoc WHERE MaPhieuKham=@MaPK AND MaThuoc=@MT",
+                    p => { p.AddWithValue("@MaPK", _maPhieuKham); p.AddWithValue("@MT", maThuoc); });
+                int slDaCo = dtExist != null && dtExist.Rows.Count > 0 ? Convert.ToInt32(dtExist.Rows[0]["SoLuong"]) : 0;
+                int slCanThemDialog = sl - slDaCo;
+
+                if (tonKho <= 0 && slDaCo == 0)
                 {
-                    MessageBox.Show($"Không đủ tồn kho. Hiện còn {tonKho} đơn vị.",
-                        "Thiếu hàng", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Thuốc này hiện không có trong kho.",
+                        "Hết tồn kho", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if (slCanThemDialog > 0 && slCanThemDialog > tonKho)
+                {
+                    MessageBox.Show($"Không đủ tồn kho.\nSố lượng muốn kê: {sl}\nĐã kê: {slDaCo}\nCần thêm: {slCanThemDialog}\nTồn kho hiện có: {tonKho}",
+                        "Không đủ tồn kho", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
@@ -1521,7 +1812,7 @@ namespace DermaSoft.Forms
                 }
 
                 txtSL2.Text = "";
-                txtLieu2.Text = "";
+                cboLieu2.Text = "";
                 loadThuoc();
             };
 
@@ -1822,7 +2113,7 @@ namespace DermaSoft.Forms
             var btnLuuGhiChu = new Guna.UI2.WinForms.Guna2GradientButton
             {
                 Dock = DockStyle.Right,
-                Width = 140,
+                Width = 160,
                 Text = "💾  Lưu Ghi Chú",
                 FillColor = ClrPrimary,
                 FillColor2 = Color.SeaGreen,
@@ -1834,7 +2125,7 @@ namespace DermaSoft.Forms
             var btnXoaNhap = new Guna.UI2.WinForms.Guna2Button
             {
                 Dock = DockStyle.Right,
-                Width = 90,
+                Width = 130,
                 Text = "Xóa nhập",
                 FillColor = Color.White,
                 BorderColor = Color.FromArgb(209, 213, 219),

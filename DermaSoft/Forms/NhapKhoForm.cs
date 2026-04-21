@@ -132,13 +132,34 @@ namespace DermaSoft.Forms
             cboNCC = new Guna2ComboBox
             {
                 Font = AppFonts.Body, ForeColor = ColorScheme.TextDark,
-                Dock = DockStyle.Top, Height = 36,
+                Height = 36,
                 BorderRadius = 8, BorderColor = BorderInput, FillColor = InputBg,
                 FocusedState = { BorderColor = ColorScheme.Primary },
                 HoverState = { BorderColor = ColorScheme.Primary },
                 DropDownStyle = ComboBoxStyle.DropDownList,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             };
+            var btnThemNCC = new Guna2Button
+            {
+                Text = "+",
+                Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+                ForeColor = Color.White,
+                FillColor = ColorScheme.Primary,
+                BorderRadius = 8,
+                Size = new Size(36, 36),
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            };
+            btnThemNCC.Click += BtnThemNCC_Click;
+            pnlNCCWrap.Controls.Add(btnThemNCC);
             pnlNCCWrap.Controls.Add(cboNCC);
+            pnlNCCWrap.Resize += (s, e) =>
+            {
+                int ww = pnlNCCWrap.Width;
+                btnThemNCC.Location = new Point(ww - 36, 0);
+                cboNCC.Location = new Point(0, 0);
+                cboNCC.Width = ww - 42;
+            };
             pnlCard.Controls.Add(pnlNCCWrap);
 
             dtpNgayNhap = new Guna2DateTimePicker
@@ -188,7 +209,7 @@ namespace DermaSoft.Forms
                 lblNguoi.Location = new Point(x2, LBL_Y);
                 lblMa.Location = new Point(x3, LBL_Y);
 
-                pnlNCCWrap.SetBounds(x0, CTRL_Y, colW, CTRL_H);
+                pnlNCCWrap.SetBounds(x0, CTRL_Y, colW, CTRL_H + 2);
                 pnlNgayWrap.SetBounds(x1, CTRL_Y, colW, CTRL_H);
                 pnlNguoiWrap.SetBounds(x2, CTRL_Y, colW, CTRL_H);
                 pnlMaWrap.SetBounds(x3, CTRL_Y, colW, CTRL_H);
@@ -768,6 +789,218 @@ namespace DermaSoft.Forms
             frm.Controls.Add(dgv);
             frm.Controls.Add(pnlSummary);
             frm.Controls.Add(pnlHeader);
+            frm.ShowDialog(this);
+        }
+
+        // ══════════════════════════════════════════
+        // THÊM NHÀ CUNG CẤP MỚI
+        // ══════════════════════════════════════════
+
+        private void BtnThemNCC_Click(object sender, EventArgs e)
+        {
+            var frm = new Form
+            {
+                Text = "Thêm Nhà Cung Cấp Mới",
+                Size = new Size(500, 380),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.None,
+                MaximizeBox = false, MinimizeBox = false,
+                BackColor = ColorScheme.Background,
+                Font = AppFonts.Body,
+            };
+            frm.Paint += (sp, ep) =>
+            {
+                using (var pen = new Pen(ColorScheme.Primary, 2f))
+                    ep.Graphics.DrawRectangle(pen, 0, 0, frm.Width - 1, frm.Height - 1);
+            };
+
+            // ── Header gradient ──
+            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 48 };
+            pnlHeader.Paint += (sp, ep) =>
+            {
+                using (var brush = new LinearGradientBrush(
+                    new Rectangle(0, 0, pnlHeader.Width, pnlHeader.Height),
+                    ColorScheme.PrimaryDark, Color.FromArgb(184, 138, 40),
+                    LinearGradientMode.Horizontal))
+                {
+                    ep.Graphics.FillRectangle(brush, 0, 0, pnlHeader.Width, pnlHeader.Height);
+                }
+            };
+            pnlHeader.Controls.Add(new Label
+            {
+                Text = "🏭  Thêm Nhà Cung Cấp Mới",
+                Font = AppFonts.H4, ForeColor = Color.White,
+                BackColor = Color.Transparent, AutoSize = true,
+                Location = new Point(20, 12),
+            });
+            // Nút đóng
+            var btnClose = new Label
+            {
+                Text = "✕", Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+                ForeColor = Color.White, BackColor = Color.Transparent,
+                Size = new Size(36, 36), Location = new Point(frm.Width - 46, 6),
+                TextAlign = ContentAlignment.MiddleCenter, Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            };
+            btnClose.Click += (s2, e2) => frm.Close();
+            pnlHeader.Controls.Add(btnClose);
+
+            // ── Body panel ──
+            var pnlBody = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = ColorScheme.Background,
+            };
+
+            // WinForms dock order: Fill first, then Top after
+            frm.Controls.Add(pnlBody);
+            frm.Controls.Add(pnlHeader);
+
+            // Dùng absolute layout cho body
+            int pad = 24, fieldY = 16;
+            int fieldW = 500 - pad * 2 - 2;
+
+            // Tên NCC
+            pnlBody.Controls.Add(new Label { Text = "Tên nhà cung cấp *", Font = AppFonts.BodyBold, ForeColor = ColorScheme.TextDark, Location = new Point(pad, fieldY), AutoSize = true });
+            fieldY += 24;
+            var pnlTenWrap = new Panel { Location = new Point(pad, fieldY), Size = new Size(fieldW, 38), BackColor = Color.Transparent };
+            var txtTenNCC = new Guna2TextBox
+            {
+                Dock = DockStyle.Fill,
+                Font = AppFonts.Body, BorderRadius = 8,
+                BorderColor = BorderInput, FillColor = InputBg,
+                FocusedState = { BorderColor = ColorScheme.Primary },
+                HoverState = { BorderColor = ColorScheme.Primary },
+                PlaceholderText = "VD: Công ty TNHH Dược phẩm ABC",
+            };
+            pnlTenWrap.Controls.Add(txtTenNCC);
+            pnlBody.Controls.Add(pnlTenWrap);
+            fieldY += 48;
+
+            // SĐT + Địa chỉ (2 cột)
+            int halfW = (fieldW - 12) / 2;
+
+            pnlBody.Controls.Add(new Label { Text = "Số điện thoại", Font = AppFonts.BodyBold, ForeColor = ColorScheme.TextDark, Location = new Point(pad, fieldY), AutoSize = true });
+            pnlBody.Controls.Add(new Label { Text = "Địa chỉ", Font = AppFonts.BodyBold, ForeColor = ColorScheme.TextDark, Location = new Point(pad + halfW + 12, fieldY), AutoSize = true });
+            fieldY += 24;
+
+            var pnlSdtWrap = new Panel { Location = new Point(pad, fieldY), Size = new Size(halfW, 38), BackColor = Color.Transparent };
+            var txtSDT = new Guna2TextBox
+            {
+                Dock = DockStyle.Fill,
+                Font = AppFonts.Body, BorderRadius = 8,
+                BorderColor = BorderInput, FillColor = InputBg,
+                FocusedState = { BorderColor = ColorScheme.Primary },
+                HoverState = { BorderColor = ColorScheme.Primary },
+                PlaceholderText = "VD: 0281234567",
+            };
+            pnlSdtWrap.Controls.Add(txtSDT);
+            pnlBody.Controls.Add(pnlSdtWrap);
+
+            var pnlDcWrap = new Panel { Location = new Point(pad + halfW + 12, fieldY), Size = new Size(halfW, 38), BackColor = Color.Transparent };
+            var txtDiaChi = new Guna2TextBox
+            {
+                Dock = DockStyle.Fill,
+                Font = AppFonts.Body, BorderRadius = 8,
+                BorderColor = BorderInput, FillColor = InputBg,
+                FocusedState = { BorderColor = ColorScheme.Primary },
+                HoverState = { BorderColor = ColorScheme.Primary },
+                PlaceholderText = "VD: 123 Nguyễn Văn Linh, Q.7",
+            };
+            pnlDcWrap.Controls.Add(txtDiaChi);
+            pnlBody.Controls.Add(pnlDcWrap);
+            fieldY += 56;
+
+            // Error label
+            var lblError = new Label { Text = "", Font = AppFonts.Small, ForeColor = ColorScheme.Danger, Location = new Point(pad, fieldY), Size = new Size(fieldW, 18), BackColor = Color.Transparent };
+            pnlBody.Controls.Add(lblError);
+            fieldY += 24;
+
+            // Nút Lưu + Hủy
+            int btnW = (fieldW - 12) / 2;
+            var btnHuy = new Guna2Button
+            {
+                Text = "❌  Hủy",
+                Font = AppFonts.BodyBold, ForeColor = ColorScheme.TextDark,
+                FillColor = Color.White, BorderColor = ColorScheme.Border,
+                BorderThickness = 1, BorderRadius = 20,
+                Location = new Point(pad, fieldY), Size = new Size(btnW, 40),
+                Cursor = Cursors.Hand,
+            };
+            btnHuy.Click += (s2, e2) => frm.Close();
+            pnlBody.Controls.Add(btnHuy);
+
+            var btnLuu = new Guna2Button
+            {
+                Text = "💾  Lưu Nhà Cung Cấp",
+                Font = AppFonts.BodyBold, ForeColor = Color.White,
+                FillColor = ColorScheme.Primary, BorderRadius = 20,
+                Location = new Point(pad + btnW + 12, fieldY), Size = new Size(btnW, 40),
+                Cursor = Cursors.Hand,
+            };
+            pnlBody.Controls.Add(btnLuu);
+
+            btnLuu.Click += (s2, e2) =>
+            {
+                string tenNCC = txtTenNCC.Text.Trim();
+                if (string.IsNullOrEmpty(tenNCC))
+                {
+                    lblError.Text = "⚠️ Vui lòng nhập tên nhà cung cấp!";
+                    txtTenNCC.Focus();
+                    return;
+                }
+
+                try
+                {
+                    using (var conn = DatabaseConnection.GetConnection())
+                    {
+                        // Kiểm tra trùng tên
+                        using (var chk = new SqlCommand(
+                            "SELECT COUNT(*) FROM NhaCungCap WHERE TenNhaCungCap = @Ten", conn))
+                        {
+                            chk.Parameters.AddWithValue("@Ten", tenNCC);
+                            if (Convert.ToInt32(chk.ExecuteScalar()) > 0)
+                            {
+                                lblError.Text = "⚠️ Nhà cung cấp \"" + tenNCC + "\" đã tồn tại!";
+                                return;
+                            }
+                        }
+
+                        using (var cmd = new SqlCommand(
+                            @"INSERT INTO NhaCungCap (TenNhaCungCap, SoDienThoaiLienHe, DiaChi) 
+                              VALUES (@Ten, @SDT, @DiaChi)", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@Ten", tenNCC);
+                            cmd.Parameters.AddWithValue("@SDT",
+                                string.IsNullOrEmpty(txtSDT.Text.Trim()) ? (object)DBNull.Value : txtSDT.Text.Trim());
+                            cmd.Parameters.AddWithValue("@DiaChi",
+                                string.IsNullOrEmpty(txtDiaChi.Text.Trim()) ? (object)DBNull.Value : txtDiaChi.Text.Trim());
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+
+                    MessageBox.Show("Thêm nhà cung cấp \"" + tenNCC + "\" thành công!",
+                        "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // Reload combo và chọn NCC vừa thêm
+                    LoadComboData();
+                    for (int i = 1; i < cboNCC.Items.Count; i++)
+                    {
+                        if (cboNCC.Items[i].ToString() == tenNCC)
+                        {
+                            cboNCC.SelectedIndex = i;
+                            break;
+                        }
+                    }
+
+                    frm.Close();
+                }
+                catch (Exception ex)
+                {
+                    lblError.Text = "Lỗi: " + ex.Message;
+                }
+            };
+
             frm.ShowDialog(this);
         }
 
