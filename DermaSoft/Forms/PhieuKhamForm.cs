@@ -1586,11 +1586,39 @@ namespace DermaSoft.Forms
             dgv2.DefaultCellStyle.SelectionBackColor = Color.FromArgb(220, 242, 230);
             dgv2.DefaultCellStyle.SelectionForeColor = Color.FromArgb(15, 92, 77);
 
-            dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_Ten", DataPropertyName = "TenThuoc", HeaderText = "Tên thuốc", FillWeight = 200, ReadOnly = true });
-            dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_DonVi", DataPropertyName = "DonViTinh", HeaderText = "Đơn vị", FillWeight = 80, ReadOnly = true });
-            dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_SL", DataPropertyName = "SoLuong", HeaderText = "SL", FillWeight = 60, ReadOnly = false });
-            dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_Lieu", DataPropertyName = "LieuDung", HeaderText = "Liều dùng", FillWeight = 220, ReadOnly = false });
-            dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_HSD", DataPropertyName = "HanSuDung", HeaderText = "HSD", FillWeight = 90, ReadOnly = true });
+            dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_Ten", DataPropertyName = "TenThuoc", HeaderText = "Tên thuốc", FillWeight = 180, ReadOnly = true });
+            dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_DonVi", DataPropertyName = "DonViTinh", HeaderText = "Đơn vị", FillWeight = 70, ReadOnly = true });
+            dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_SL", DataPropertyName = "SoLuong", HeaderText = "SL", FillWeight = 50, ReadOnly = false });
+            dgv2.Columns.Add(new DataGridViewTextBoxColumn 
+            { 
+                Name = "c2_DonGia", 
+                DataPropertyName = "DonGia", 
+                HeaderText = "Đơn giá", 
+                FillWeight = 90, 
+                ReadOnly = true,
+                DefaultCellStyle = new DataGridViewCellStyle 
+                { 
+                    Format = "N0", 
+                    Alignment = DataGridViewContentAlignment.MiddleRight 
+                } 
+            });
+            dgv2.Columns.Add(new DataGridViewTextBoxColumn 
+            { 
+                Name = "c2_ThanhTien", 
+                DataPropertyName = "ThanhTien", 
+                HeaderText = "Thành tiền", 
+                FillWeight = 100, 
+                ReadOnly = true,
+                DefaultCellStyle = new DataGridViewCellStyle 
+                { 
+                    Format = "N0", 
+                    Alignment = DataGridViewContentAlignment.MiddleRight,
+                    Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(184, 138, 40) // Gold
+                } 
+            });
+            dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_Lieu", DataPropertyName = "LieuDung", HeaderText = "Liều dùng", FillWeight = 180, ReadOnly = false });
+            dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_HSD", DataPropertyName = "HanSuDung", HeaderText = "HSD", FillWeight = 80, ReadOnly = true });
             dgv2.Columns.Add(new DataGridViewTextBoxColumn { Name = "c2_MaThuoc", DataPropertyName = "MaThuoc", Visible = false });
             dgv2.Columns.Add(new DataGridViewButtonColumn
             {
@@ -1635,6 +1663,8 @@ namespace DermaSoft.Forms
             {
                 DataTable dt = DatabaseConnection.ExecuteQuery(@"
                     SELECT t.TenThuoc, t.DonViTinh, cdt.SoLuong,
+                           t.DonGia,
+                           (cdt.SoLuong * t.DonGia) AS ThanhTien,
                            ISNULL(cdt.LieuDung, N'') AS LieuDung,
                            ISNULL((SELECT TOP 1 FORMAT(v.HanSuDung,'MM/yyyy')
                                    FROM VW_TonKhoTheoLo v
@@ -1648,6 +1678,23 @@ namespace DermaSoft.Forms
                 dgv2.DataSource = dt ?? new DataTable();
             };
             loadThuoc();
+
+            // ── Nút Xuất Đơn Thuốc (thêm vào pnlAdd SAU khi dgv2 đã tạo) ──────
+            var btnXuatDon = new Guna.UI2.WinForms.Guna2Button
+            {
+                Text = "📄",
+                Width = 42,
+                Height = 36,
+                Dock = DockStyle.Right,
+                BorderRadius = 8,
+                FillColor = Color.FromArgb(14, 165, 233), // Cyan/Blue
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 14f),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(6, 0, 0, 0),
+            };
+            btnXuatDon.Click += (s, e) => XuatDonThuoc(dgv2);
+            pnlAdd.Controls.Add(btnXuatDon);
 
             // ── Inline edit SL / Liều dùng trực tiếp trên lưới ────────────
             dgv2.CellEndEdit += (s, e) =>
@@ -2511,6 +2558,125 @@ namespace DermaSoft.Forms
             if (so >= 1_000)
                 return (so / 1_000m).ToString("0") + "K";
             return so.ToString("N0") + "đ";
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // XUẤT ĐƠN THUỐC
+        // ══════════════════════════════════════════════════════════════════
+
+        /// <summary>Xuất đơn thuốc ra file .txt với đầy đủ thông tin bệnh nhân + thuốc.</summary>
+        private void XuatDonThuoc(DataGridView dgv)
+        {
+            DataTable dt = dgv.DataSource as DataTable;
+            if (dt == null || dt.Rows.Count == 0)
+            {
+                MessageBox.Show("Chưa có thuốc trong đơn.", "Thông báo",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "Text Files (*.txt)|*.txt";
+                sfd.FileName = $"DonThuoc_PK{_maPhieuKham}_{DateTime.Now:yyyyMMdd_HHmm}.txt";
+                sfd.Title = "Lưu Đơn Thuốc";
+
+                if (sfd.ShowDialog() != DialogResult.OK) return;
+
+                try
+                {
+                    var sb = new System.Text.StringBuilder();
+                    sb.AppendLine("═══════════════════════════════════════════════════════");
+                    sb.AppendLine("           PHÒNG KHÁM DA LIỄU DERMASOFT");
+                    sb.AppendLine("        Địa chỉ: 123 Đường ABC, Quận XYZ, TP.HCM");
+                    sb.AppendLine("                 ☎  Hotline: 1900-xxxx");
+                    sb.AppendLine("═══════════════════════════════════════════════════════");
+                    sb.AppendLine();
+                    sb.AppendLine("                    ĐƠN THUỐC");
+                    sb.AppendLine();
+                    sb.AppendLine($"Ngày kê đơn: {DateTime.Now:dd/MM/yyyy HH:mm}");
+                    sb.AppendLine($"Phiếu khám:  #{_maPhieuKham}");
+
+                    // Lấy thông tin bệnh nhân và bác sĩ từ DB
+                    string tenBN = "N/A";
+                    string tenBS = "N/A";
+                    string chanDoan = "";
+
+                    try
+                    {
+                        DataTable dtInfo = DatabaseConnection.ExecuteQuery(@"
+                            SELECT bn.HoTen AS TenBN, nd.HoTen AS TenBS, pk.ChanDoan
+                            FROM PhieuKham pk
+                            LEFT JOIN BenhNhan bn ON pk.MaBenhNhan = bn.MaBenhNhan
+                            LEFT JOIN NguoiDung nd ON pk.MaBacSi = nd.MaNguoiDung
+                            WHERE pk.MaPhieuKham = @MaPK",
+                            p => p.AddWithValue("@MaPK", _maPhieuKham));
+
+                        if (dtInfo != null && dtInfo.Rows.Count > 0)
+                        {
+                            tenBN = dtInfo.Rows[0]["TenBN"]?.ToString() ?? "N/A";
+                            tenBS = dtInfo.Rows[0]["TenBS"]?.ToString() ?? "N/A";
+                            chanDoan = dtInfo.Rows[0]["ChanDoan"]?.ToString() ?? "";
+                        }
+                    }
+                    catch { }
+
+                    sb.AppendLine($"Bệnh nhân:   {tenBN}");
+                    sb.AppendLine($"Bác sĩ:      {tenBS}");
+                    if (!string.IsNullOrWhiteSpace(chanDoan))
+                        sb.AppendLine($"Chẩn đoán:   {chanDoan}");
+                    sb.AppendLine();
+                    sb.AppendLine("───────────────────────────────────────────────────────");
+                    sb.AppendLine(" STT | Tên thuốc           | SL | Đơn giá    | Thành tiền");
+                    sb.AppendLine("───────────────────────────────────────────────────────");
+
+                    decimal tongTien = 0;
+                    int stt = 1;
+
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        string tenThuoc = row["TenThuoc"]?.ToString() ?? "";
+                        int soLuong = Convert.ToInt32(row["SoLuong"] ?? 0);
+                        decimal donGia = Convert.ToDecimal(row["DonGia"] ?? 0);
+                        decimal thanhTien = Convert.ToDecimal(row["ThanhTien"] ?? 0);
+                        string lieuDung = row["LieuDung"]?.ToString() ?? "";
+
+                        sb.AppendLine($" {stt,3} | {tenThuoc,-20} | {soLuong,2} | {donGia,10:N0} | {thanhTien,12:N0}");
+                        if (!string.IsNullOrWhiteSpace(lieuDung))
+                            sb.AppendLine($"      Liều dùng: {lieuDung}");
+                        sb.AppendLine();
+
+                        tongTien += thanhTien;
+                        stt++;
+                    }
+
+                    sb.AppendLine("───────────────────────────────────────────────────────");
+                    sb.AppendLine($"                          TỔNG CỘNG: {tongTien,12:N0} đ");
+                    sb.AppendLine("───────────────────────────────────────────────────────");
+                    sb.AppendLine();
+                    sb.AppendLine("LƯU Ý:");
+                    sb.AppendLine("- Uống thuốc đúng liều, đúng giờ");
+                    sb.AppendLine("- Tái khám khi có triệu chứng bất thường");
+                    sb.AppendLine("- Bảo quản thuốc ở nơi khô ráo, tránh ánh nắng");
+                    sb.AppendLine();
+                    sb.AppendLine($"                          Bác sĩ khám");
+                    sb.AppendLine($"                        {tenBS}");
+
+                    System.IO.File.WriteAllText(sfd.FileName, sb.ToString(),
+                        new System.Text.UTF8Encoding(true));
+
+                    MessageBox.Show("Đã xuất đơn thuốc thành công!\n" + sfd.FileName,
+                        "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // Mở file vừa tạo
+                    try { System.Diagnostics.Process.Start(sfd.FileName); } catch { }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Lỗi xuất file: " + ex.Message, "Lỗi",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
         }
     }
 }

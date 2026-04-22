@@ -300,6 +300,7 @@
     </Compile>
     <None Include="DermaSoft\app.manifest" />
     <None Include="DermaSoft\Enums\README.md" />
+    <None Include="DermaSoft\FEATURE_KEDONTHUOC_UPGRADE.md" />
     <None Include="DermaSoft\FEATURE_SQL_CONNECTION_CHECK.md" />
     <None Include="DermaSoft\TEST_PLAN.md" />
     <None Include="DermaSoft\TEST_TONKHO.md" />
@@ -332,6 +333,7 @@
     <Content Include="DermaSoft\Data\MIGRATION_FIX_TONKHO.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_FIX_TONKHO_BUOC2.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_SOTHUTU.sql" />
+    <Content Include="DermaSoft\Data\MIGRATION_SOTHUTU_LICHHEN.sql" />
     <Content Include="DermaSoft\Data\TEST_TONKHO_AUTO.sql" />
     <Content Include="ENUM_COMPLETION_REPORT.txt" />
     <None Include="Resources\logo.png" />

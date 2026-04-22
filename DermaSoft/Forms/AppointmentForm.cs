@@ -52,12 +52,13 @@ namespace DermaSoft.Forms
             dgvLichHen.AutoGenerateColumns = false;
             dgvLichHen.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvLichHen.Columns.Clear();
+            dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colSTT", DataPropertyName = "SoThuTu", HeaderText = "STT", FillWeight = 40F, ReadOnly = true, DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 9F, FontStyle.Bold) } });
             dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colGio", DataPropertyName = "ThoiGianHen", HeaderText = "Giờ", FillWeight = 60F, ReadOnly = true });
-            dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colBenhNhan", DataPropertyName = "HoTen", HeaderText = "Bệnh nhân", FillWeight = 170F, ReadOnly = true });
-            dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colSDT", DataPropertyName = "SoDienThoai", HeaderText = "SĐT", FillWeight = 110F, ReadOnly = true });
-            dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colBacSi", DataPropertyName = "TenBacSi", HeaderText = "Bác sĩ", FillWeight = 140F, ReadOnly = true });
-            dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colGhiChu", DataPropertyName = "GhiChu", HeaderText = "Ghi chú", FillWeight = 140F, ReadOnly = true });
-            dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colTrangThai", DataPropertyName = "TrangThaiText", HeaderText = "Trạng thái", FillWeight = 95F, ReadOnly = true });
+            dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colBenhNhan", DataPropertyName = "HoTen", HeaderText = "Bệnh nhân", FillWeight = 150F, ReadOnly = true });
+            dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colSDT", DataPropertyName = "SoDienThoai", HeaderText = "SĐT", FillWeight = 100F, ReadOnly = true });
+            dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colBacSi", DataPropertyName = "TenBacSi", HeaderText = "Bác sĩ", FillWeight = 130F, ReadOnly = true });
+            dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colGhiChu", DataPropertyName = "GhiChu", HeaderText = "Ghi chú", FillWeight = 130F, ReadOnly = true });
+            dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colTrangThai", DataPropertyName = "TrangThaiText", HeaderText = "Trạng thái", FillWeight = 85F, ReadOnly = true });
             dgvLichHen.Columns.Add(new DataGridViewTextBoxColumn { Name = "colThaoTac", DataPropertyName = "ThaoTacText", HeaderText = "Thao tác", FillWeight = 80F, ReadOnly = true });
             // ─────────────────────────────────────────────────────────────────
 
@@ -182,6 +183,7 @@ namespace DermaSoft.Forms
                 string sql = @"
                     SELECT
                         lh.MaLichHen,
+                        lh.SoThuTu,
                         FORMAT(lh.ThoiGianHen, 'HH:mm')            AS ThoiGianHen,
                         ISNULL(bn.HoTen,
                             CASE WHEN lh.SoDienThoaiKhach IS NOT NULL
