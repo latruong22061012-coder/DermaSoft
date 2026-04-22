@@ -300,6 +300,7 @@
     </Compile>
     <None Include="DermaSoft\app.manifest" />
     <None Include="DermaSoft\Enums\README.md" />
+    <None Include="DermaSoft\FEATURE_SQL_CONNECTION_CHECK.md" />
     <None Include="DermaSoft\TEST_PLAN.md" />
     <None Include="DermaSoft\TEST_TONKHO.md" />
     <None Include="ENUM_SUMMARY_VI.md" />

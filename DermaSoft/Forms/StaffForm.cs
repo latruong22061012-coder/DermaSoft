@@ -972,9 +972,10 @@ namespace DermaSoft.Forms
         private void BtnKhoaTK_Click(object sender, EventArgs e)
         {
             if (_maNVDangChon == -1) return;
-            bool dangKhoa = btnKhoaTK.Text.Contains("Khóa");
+            // Fix: kiểm tra chính xác hơn — tài khoản đang ACTIVE thì mới khóa
+            bool dangActive = btnKhoaTK.Text.Contains("Khóa Tài Khoản");
 
-            if (dangKhoa)
+            if (dangActive)
                 KhoaTaiKhoan(_maNVDangChon, txtHoTen.Text);
             else
                 MoKhoaTaiKhoan(_maNVDangChon, txtHoTen.Text);

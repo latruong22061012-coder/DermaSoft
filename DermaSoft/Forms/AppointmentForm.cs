@@ -315,8 +315,9 @@ namespace DermaSoft.Forms
             {
                 case 1: return 0; // Chờ xác nhận
                 case 2: return 1; // Đã xác nhận
-                case 3: return 3; // Đã hủy
-                default: return -1;
+                case 3: return 2; // Đã tiếp nhận
+                case 4: return 3; // Đã hủy
+                default: return -1; // Tất cả
             }
         }
 

@@ -563,6 +563,7 @@ namespace DermaSoft.Forms
             "Tất cả",
             "Chờ xác nhận",
             "Đã xác nhận",
+            "Đã tiếp nhận",
             "Đã hủy"});
             this.cmbFilter.Location = new System.Drawing.Point(614, 7);
             this.cmbFilter.Margin = new System.Windows.Forms.Padding(4);
