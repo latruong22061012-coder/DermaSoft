@@ -189,20 +189,36 @@ namespace DermaSoft.Data
 
         /// <summary>
         /// Ghi log lỗi và hiện thông báo cho người dùng.
+        /// Không hiện MessageBox nếu đang ở LoginForm (để LoginForm tự xử lý).
         /// </summary>
         private static void HandleError(string context, Exception ex)
         {
             string msg = $"[DB Error - {context}]\n{ex.Message}";
             System.Diagnostics.Debug.WriteLine(msg);
 
-            // Chỉ hiện MessageBox khi chạy trên UI thread
+            // Chỉ hiện MessageBox khi chạy trên UI thread VÀ KHÔNG phải LoginForm
             if (Application.OpenForms.Count > 0)
             {
-                MessageBox.Show(
-                    $"Lỗi kết nối cơ sở dữ liệu:\n{ex.Message}",
-                    "Lỗi Database",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                // Kiểm tra xem có phải LoginForm đang active không
+                bool isLoginForm = false;
+                foreach (Form f in Application.OpenForms)
+                {
+                    if (f.GetType().Name == "LoginForm")
+                    {
+                        isLoginForm = true;
+                        break;
+                    }
+                }
+
+                // Chỉ hiện popup lỗi nếu KHÔNG phải LoginForm
+                if (!isLoginForm)
+                {
+                    MessageBox.Show(
+                        $"Lỗi kết nối cơ sở dữ liệu:\n{ex.Message}",
+                        "Lỗi Database",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
             }
         }
     }

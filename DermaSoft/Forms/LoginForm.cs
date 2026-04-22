@@ -46,14 +46,33 @@ namespace DermaSoft.Forms
             this.pnlHeader.MouseDown += PnlHeader_MouseDown;
             this.lblAppName.MouseDown += PnlHeader_MouseDown;
             this.lblTagline.MouseDown += PnlHeader_MouseDown;
+
+            // Thêm sự kiện click vào lblError để thử lại kết nối
+            this.lblError.Click += LblError_ClickThuLai;
+            this.lblError.Cursor = Cursors.Hand;
         }
 
         private void KiemTraKetNoi()
         {
             if (!DatabaseConnection.TestConnection(out string err))
             {
-                HienThiLoi("⚠️  Không thể kết nối cơ sở dữ liệu. Vui lòng kiểm tra lại!");
+                // Hiển thị thông báo rõ ràng
+                HienThiLoi("❌  SQL Server chưa được khởi động!\n\nVui lòng khởi động SQL Server và nhấn 'Thử Lại'.");
                 btnDangNhap.Enabled = false;
+                btnDangNhap.Text = "❌   SQL Server Tắt";
+
+                // Thay đổi màu nút thành xám
+                btnDangNhap.FillColor = Color.Gray;
+                btnDangNhap.ForeColor = Color.White;
+            }
+            else
+            {
+                // Kết nối thành công
+                AnLoi();
+                btnDangNhap.Enabled = true;
+                btnDangNhap.Text = "🔑   Đăng Nhập";
+                btnDangNhap.FillColor = ColorTranslator.FromHtml("#0F5C4D"); // Màu xanh gốc
+                btnDangNhap.ForeColor = Color.White;
             }
         }
 
@@ -81,6 +100,16 @@ namespace DermaSoft.Forms
         // Nút Đăng Nhập
         private void BtnDangNhap_Click(object sender, EventArgs e)
         {
+            // Kiểm tra kết nối SQL trước khi đăng nhập
+            if (!DatabaseConnection.TestConnection(out string err))
+            {
+                HienThiLoi("❌  SQL Server chưa được khởi động!\n\nVui lòng khởi động SQL Server và nhấn 'Thử Lại'.");
+                btnDangNhap.Enabled = false;
+                btnDangNhap.Text = "❌   SQL Server Tắt";
+                btnDangNhap.FillColor = Color.Gray;
+                return;
+            }
+
             ThucHienDangNhap();
         }
 
@@ -352,7 +381,18 @@ namespace DermaSoft.Forms
 
         private void HienThiLoi(string thongBao)
         {
-            lblError.Text = thongBao;
+            // Nếu là lỗi SQL Server, thêm text "Thử Lại" vào cuối
+            if (thongBao.Contains("SQL Server"))
+            {
+                lblError.Text = thongBao + "\n\n👆  Nhấn vào đây để Thử Lại";
+                lblError.Font = new Font(lblError.Font.FontFamily, 9f, FontStyle.Bold);
+            }
+            else
+            {
+                lblError.Text = thongBao;
+                lblError.Font = new Font(lblError.Font.FontFamily, 9.5f, FontStyle.Regular);
+            }
+
             pnlError.Visible = true;
 
             // Animation lắc nhẹ textbox
@@ -388,9 +428,17 @@ namespace DermaSoft.Forms
 
         }
 
-        private void lblError_Click(object sender, EventArgs e)
+        private void LblError_ClickThuLai(object sender, EventArgs e)
         {
+            // Chỉ cho phép thử lại khi SQL Server tắt
+            if (!btnDangNhap.Enabled || btnDangNhap.Text.Contains("Tắt"))
+            {
+                lblError.Text = "⏳  Đang kiểm tra kết nối...";
+                Application.DoEvents();
 
+                System.Threading.Tasks.Task.Delay(500).Wait();
+                KiemTraKetNoi();
+            }
         }
 
         private void pnlHeader_Paint(object sender, PaintEventArgs e)

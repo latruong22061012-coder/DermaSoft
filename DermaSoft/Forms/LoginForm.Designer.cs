@@ -308,7 +308,6 @@ namespace DermaSoft.Forms
             this.lblError.TabIndex = 0;
             this.lblError.Text = "⚠️  Tên đăng nhập hoặc mật khẩu không đúng!";
             this.lblError.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.lblError.Click += new System.EventHandler(this.lblError_Click);
             // 
             // pnlFooter
             // 

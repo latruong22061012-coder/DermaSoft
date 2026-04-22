@@ -3,7 +3,7 @@ GO
 USE DERMASOFT;
 GO
 Select *
-from Thuoc
+from NguoiDung
 select * 
 from XacThucOTP
 -- ============================================================
