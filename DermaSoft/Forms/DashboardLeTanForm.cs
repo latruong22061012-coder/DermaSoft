@@ -130,11 +130,23 @@ namespace DermaSoft.Forms
         {
             try
             {
+                // STT được TÍNH ĐỘNG bằng ROW_NUMBER() — không đọc từ cột SoThuTu.
+                // Chỉ lịch đã XN (TrangThai=1) mới có STT; lịch Chờ XN (0) hiện '—'.
                 const string sql = @"
+                    WITH STTCalc AS (
+                        SELECT MaLichHen,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY CAST(ThoiGianHen AS DATE), MaNguoiDung
+                                   ORDER BY ThoiGianHen ASC
+                               ) AS STT
+                        FROM LichHen
+                        WHERE TrangThai = 1
+                          AND CAST(ThoiGianHen AS DATE) = CAST(GETDATE() AS DATE)
+                    )
                     SELECT
                         lh.MaLichHen,
                         lh.TrangThai,
-                        ISNULL(CAST(lh.SoThuTu AS NVARCHAR(10)), N'—') AS STT,
+                        ISNULL(CAST(s.STT AS NVARCHAR(10)), N'—') AS STT,
                         FORMAT(lh.ThoiGianHen, 'HH:mm')            AS ThoiGianHen,
                         ISNULL(bn.HoTen, 
                             CASE WHEN lh.SoDienThoaiKhach IS NOT NULL 
@@ -145,7 +157,7 @@ namespace DermaSoft.Forms
                         ISNULL(nd.HoTen, N'Chưa phân công')         AS TenBacSi,
                         CASE lh.TrangThai
                             WHEN 0 THEN N'Chờ XN'
-                            WHEN 1 THEN N'Đã XN (STT: ' + ISNULL(CAST(lh.SoThuTu AS NVARCHAR(10)), N'—') + N')'
+                            WHEN 1 THEN N'Đã XN (STT: ' + ISNULL(CAST(s.STT AS NVARCHAR(10)), N'—') + N')'
                             WHEN 2 THEN N'Đã tiếp nhận'
                             WHEN 3 THEN N'Đã hủy'
                             ELSE        N'Không rõ'
@@ -153,6 +165,7 @@ namespace DermaSoft.Forms
                     FROM LichHen lh
                     LEFT JOIN BenhNhan  bn ON lh.MaBenhNhan  = bn.MaBenhNhan
                     LEFT JOIN NguoiDung nd ON lh.MaNguoiDung = nd.MaNguoiDung
+                    LEFT JOIN STTCalc   s  ON lh.MaLichHen   = s.MaLichHen
                     WHERE CAST(lh.ThoiGianHen AS DATE) = CAST(GETDATE() AS DATE)
                       AND lh.TrangThai IN (0, 1)
                     ORDER BY lh.ThoiGianHen ASC";
@@ -448,7 +461,8 @@ namespace DermaSoft.Forms
             DieuHuongFormCon("Quản Lý Lịch Hẹn");
         }
 
-        /// <summary>Xác nhận lịch hẹn đang chọn (TrangThai 0 → 1) + tự động cấp STT.</summary>
+        /// <summary>Xác nhận lịch hẹn đang chọn (TrangThai 0 → 1). 
+        /// STT được TÍNH ĐỘNG bằng ROW_NUMBER() khi load grid — không cần lưu vào DB.</summary>
         private void BtnXacNhan_Click(object sender, EventArgs e)
         {
             if (dgvQueue.CurrentRow == null || dgvQueue.CurrentRow.IsNewRow)
@@ -458,66 +472,23 @@ namespace DermaSoft.Forms
                 return;
             }
 
-            // Kiểm tra trạng thái hiện tại
-            int trangThai = Convert.ToInt32(dgvQueue.CurrentRow.Cells["TrangThai"].Value);
-            if (trangThai != 0)
-            {
-                MessageBox.Show("Lịch hẹn này đã được xác nhận.",
-                    "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
             int maLichHen = Convert.ToInt32(dgvQueue.CurrentRow.Cells["MaLichHen"].Value);
             string tenBN = dgvQueue.CurrentRow.Cells["colBenhNhan"]?.Value?.ToString() ?? "";
 
-            // ── Tự động tính STT theo khung giờ đã đặt lịch ──
-            int sttGoiY = TinhSoThuTuTiepTheo(maLichHen);
-
-            // Cho phép tùy chỉnh STT
-            string sttInput = Microsoft.VisualBasic.Interaction.InputBox(
-                $"Xác nhận lịch hẹn cho \"{tenBN}\"\n\n" +
-                $"Số thứ tự gợi ý (theo khung giờ): {sttGoiY}\n" +
-                $"Nhập STT tùy chỉnh hoặc để nguyên:",
-                "Xác nhận & Cấp số thứ tự",
-                sttGoiY.ToString());
-
-            // Người dùng bấm Cancel
-            if (string.IsNullOrWhiteSpace(sttInput)) return;
-
-            if (!int.TryParse(sttInput.Trim(), out int sttChon) || sttChon <= 0)
-            {
-                MessageBox.Show("Số thứ tự phải là số nguyên dương.",
-                    "STT không hợp lệ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            // Kiểm tra STT đã được sử dụng chưa
-            try
-            {
-                var dtCheck = DatabaseConnection.ExecuteQuery(
-                    @"SELECT COUNT(*) AS C FROM LichHen
-                      WHERE CAST(ThoiGianHen AS DATE) = CAST(GETDATE() AS DATE)
-                        AND TrangThai = 1 AND SoThuTu = @STT",
-                    p => p.AddWithValue("@STT", sttChon));
-                int daTonTai = dtCheck != null && dtCheck.Rows.Count > 0
-                    ? Convert.ToInt32(dtCheck.Rows[0]["C"]) : 0;
-                if (daTonTai > 0)
-                {
-                    var xn = MessageBox.Show(
-                        $"STT {sttChon} đã được sử dụng cho lịch hẹn khác hôm nay.\nBạn vẫn muốn dùng STT này?",
-                        "STT trùng lặp", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                    if (xn != DialogResult.Yes) return;
-                }
-            }
-            catch { /* bỏ qua lỗi check */ }
+            var xn = MessageBox.Show(
+                $"Xác nhận lịch hẹn cho \"{tenBN}\"?\n\n" +
+                "Số thứ tự sẽ được tự động cấp theo khung giờ đã đặt.",
+                "Xác Nhận Lịch Hẹn", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (xn != DialogResult.Yes) return;
 
             try
             {
-                const string sql = "UPDATE LichHen SET TrangThai = 1, SoThuTu = @STT WHERE MaLichHen = @MaLH";
+                // Chỉ cập nhật TrangThai — STT tự tính bằng ROW_NUMBER() trong SELECT
+                const string sql = "UPDATE LichHen SET TrangThai = 1 WHERE MaLichHen = @MaLH";
                 DatabaseConnection.ExecuteNonQuery(sql,
-                    p => { p.AddWithValue("@MaLH", maLichHen); p.AddWithValue("@STT", sttChon); });
+                    p => p.AddWithValue("@MaLH", maLichHen));
 
-                MessageBox.Show($"Đã xác nhận lịch hẹn thành công! ✅\nSố thứ tự: {sttChon}",
+                MessageBox.Show("Đã xác nhận lịch hẹn thành công! ✅",
                     "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 LoadTatCa();
@@ -527,28 +498,6 @@ namespace DermaSoft.Forms
                 MessageBox.Show("Lỗi xác nhận lịch hẹn:\n" + ex.Message,
                     "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-        }
-
-        /// <summary>
-        /// Tính STT tiếp theo dựa trên khung giờ đặt lịch hẹn.
-        /// Sắp xếp theo ThoiGianHen ASC, STT = thứ tự trong danh sách hôm nay.
-        /// </summary>
-        private int TinhSoThuTuTiepTheo(int maLichHen)
-        {
-            try
-            {
-                // Đếm số lịch hẹn đã xác nhận hôm nay + 1
-                var dt = DatabaseConnection.ExecuteQuery(
-                    @"SELECT ISNULL(MAX(SoThuTu), 0) + 1 AS STTMoi
-                      FROM LichHen
-                      WHERE CAST(ThoiGianHen AS DATE) = CAST(GETDATE() AS DATE)
-                        AND TrangThai = 1
-                        AND SoThuTu IS NOT NULL");
-                if (dt != null && dt.Rows.Count > 0)
-                    return Convert.ToInt32(dt.Rows[0]["STTMoi"]);
-            }
-            catch { }
-            return 1;
         }
 
         /// <summary>

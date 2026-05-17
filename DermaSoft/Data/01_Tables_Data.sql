@@ -3,8 +3,8 @@ GO
 USE DERMASOFT;
 GO
 Select *
-from NguoiDung
-select * 
+from NguoiDung	
+Select * 
 from XacThucOTP
 -- ============================================================
 -- PHẦN 1: NHÓM 1 - DANH MỤC & CON NGƯỜI

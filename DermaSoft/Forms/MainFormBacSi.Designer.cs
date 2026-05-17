@@ -54,6 +54,7 @@ namespace DermaSoft.Forms
             this.lblUserName = new System.Windows.Forms.Label();
             this.lblUserRole = new System.Windows.Forms.Label();
             this.pnlSidebarLogo = new System.Windows.Forms.Panel();
+            this.pnlLogoIcon = new Guna.UI2.WinForms.Guna2Panel();
             this.lblLogoText = new System.Windows.Forms.Label();
             this.lblLogoSub = new System.Windows.Forms.Label();
             this.pnlTopbar = new System.Windows.Forms.Panel();
@@ -69,7 +70,6 @@ namespace DermaSoft.Forms
             this.btnMaximize = new Guna.UI2.WinForms.Guna2Button();
             this.btnClose = new Guna.UI2.WinForms.Guna2Button();
             this.dragControl = new Guna.UI2.WinForms.Guna2DragControl(this.components);
-            this.pnlLogoIcon = new Guna.UI2.WinForms.Guna2Panel();
             this.pnlSidebar.SuspendLayout();
             this.pnlSidebarUser.SuspendLayout();
             this.pnlSidebarLogo.SuspendLayout();
@@ -173,6 +173,17 @@ namespace DermaSoft.Forms
             this.pnlSidebarLogo.Size = new System.Drawing.Size(338, 75);
             this.pnlSidebarLogo.TabIndex = 3;
             // 
+            // pnlLogoIcon
+            // 
+            this.pnlLogoIcon.BackgroundImage = global::DermaSoft.Properties.Resources.logo1;
+            this.pnlLogoIcon.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.pnlLogoIcon.BorderRadius = 6;
+            this.pnlLogoIcon.Location = new System.Drawing.Point(30, 12);
+            this.pnlLogoIcon.Margin = new System.Windows.Forms.Padding(4);
+            this.pnlLogoIcon.Name = "pnlLogoIcon";
+            this.pnlLogoIcon.Size = new System.Drawing.Size(51, 50);
+            this.pnlLogoIcon.TabIndex = 0;
+            // 
             // lblLogoText
             // 
             this.lblLogoText.AutoSize = true;
@@ -195,9 +206,9 @@ namespace DermaSoft.Forms
             this.lblLogoSub.Location = new System.Drawing.Point(89, 46);
             this.lblLogoSub.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblLogoSub.Name = "lblLogoSub";
-            this.lblLogoSub.Size = new System.Drawing.Size(119, 16);
+            this.lblLogoSub.Size = new System.Drawing.Size(160, 16);
             this.lblLogoSub.TabIndex = 2;
-            this.lblLogoSub.Text = "Phòng Khám Da Liễu";
+            this.lblLogoSub.Text = "Phòng Khám DermaSoft Skin";
             // 
             // pnlTopbar
             // 
@@ -322,9 +333,9 @@ namespace DermaSoft.Forms
             this.lblTitleText.Location = new System.Drawing.Point(64, 22);
             this.lblTitleText.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblTitleText.Name = "lblTitleText";
-            this.lblTitleText.Size = new System.Drawing.Size(523, 28);
+            this.lblTitleText.Size = new System.Drawing.Size(600, 28);
             this.lblTitleText.TabIndex = 4;
-            this.lblTitleText.Text = "DermaSoft — Hệ Thống Quản Lý Phòng Khám Da Liễu";
+            this.lblTitleText.Text = "DermaSoft — Hệ Thống Quản Lý Phòng Khám DermaSoft Skin\r\n";
             // 
             // btnMinimize
             // 
@@ -383,17 +394,6 @@ namespace DermaSoft.Forms
             this.dragControl.DockIndicatorTransparencyValue = 0.6D;
             this.dragControl.TargetControl = this.pnlTitleBar;
             this.dragControl.UseTransparentDrag = true;
-            // 
-            // pnlLogoIcon
-            // 
-            this.pnlLogoIcon.BackgroundImage = global::DermaSoft.Properties.Resources.logo1;
-            this.pnlLogoIcon.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.pnlLogoIcon.BorderRadius = 6;
-            this.pnlLogoIcon.Location = new System.Drawing.Point(30, 12);
-            this.pnlLogoIcon.Margin = new System.Windows.Forms.Padding(4);
-            this.pnlLogoIcon.Name = "pnlLogoIcon";
-            this.pnlLogoIcon.Size = new System.Drawing.Size(51, 50);
-            this.pnlLogoIcon.TabIndex = 0;
             // 
             // MainFormBacSi
             // 

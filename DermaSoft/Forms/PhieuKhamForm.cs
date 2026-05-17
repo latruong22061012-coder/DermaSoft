@@ -2561,12 +2561,23 @@ namespace DermaSoft.Forms
         }
 
         // ══════════════════════════════════════════════════════════════════
-        // XUẤT ĐƠN THUỐC
+        // XUẤT ĐƠN THUỐC — Dùng DonThuocPrinter (GDI+ PrintPreviewDialog)
+        // Lấy thông tin động từ ThongTinPhongKham + PhieuKham + ChiTietDonThuoc
         // ══════════════════════════════════════════════════════════════════
 
-        /// <summary>Xuất đơn thuốc ra file .txt với đầy đủ thông tin bệnh nhân + thuốc.</summary>
+        /// <summary>
+        /// Mở cửa sổ xem trước/in đơn thuốc bằng GDI+ (giống In Hóa Đơn).
+        /// Hỗ trợ xuất PDF qua "Microsoft Print to PDF".
+        /// </summary>
         private void XuatDonThuoc(DataGridView dgv)
         {
+            if (_maPhieuKham <= 0)
+            {
+                MessageBox.Show("Chưa chọn phiếu khám.", "Thông báo",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             DataTable dt = dgv.DataSource as DataTable;
             if (dt == null || dt.Rows.Count == 0)
             {
@@ -2575,107 +2586,15 @@ namespace DermaSoft.Forms
                 return;
             }
 
-            using (var sfd = new SaveFileDialog())
+            try
             {
-                sfd.Filter = "Text Files (*.txt)|*.txt";
-                sfd.FileName = $"DonThuoc_PK{_maPhieuKham}_{DateTime.Now:yyyyMMdd_HHmm}.txt";
-                sfd.Title = "Lưu Đơn Thuốc";
-
-                if (sfd.ShowDialog() != DialogResult.OK) return;
-
-                try
-                {
-                    var sb = new System.Text.StringBuilder();
-                    sb.AppendLine("═══════════════════════════════════════════════════════");
-                    sb.AppendLine("           PHÒNG KHÁM DA LIỄU DERMASOFT");
-                    sb.AppendLine("        Địa chỉ: 123 Đường ABC, Quận XYZ, TP.HCM");
-                    sb.AppendLine("                 ☎  Hotline: 1900-xxxx");
-                    sb.AppendLine("═══════════════════════════════════════════════════════");
-                    sb.AppendLine();
-                    sb.AppendLine("                    ĐƠN THUỐC");
-                    sb.AppendLine();
-                    sb.AppendLine($"Ngày kê đơn: {DateTime.Now:dd/MM/yyyy HH:mm}");
-                    sb.AppendLine($"Phiếu khám:  #{_maPhieuKham}");
-
-                    // Lấy thông tin bệnh nhân và bác sĩ từ DB
-                    string tenBN = "N/A";
-                    string tenBS = "N/A";
-                    string chanDoan = "";
-
-                    try
-                    {
-                        DataTable dtInfo = DatabaseConnection.ExecuteQuery(@"
-                            SELECT bn.HoTen AS TenBN, nd.HoTen AS TenBS, pk.ChanDoan
-                            FROM PhieuKham pk
-                            LEFT JOIN BenhNhan bn ON pk.MaBenhNhan = bn.MaBenhNhan
-                            LEFT JOIN NguoiDung nd ON pk.MaBacSi = nd.MaNguoiDung
-                            WHERE pk.MaPhieuKham = @MaPK",
-                            p => p.AddWithValue("@MaPK", _maPhieuKham));
-
-                        if (dtInfo != null && dtInfo.Rows.Count > 0)
-                        {
-                            tenBN = dtInfo.Rows[0]["TenBN"]?.ToString() ?? "N/A";
-                            tenBS = dtInfo.Rows[0]["TenBS"]?.ToString() ?? "N/A";
-                            chanDoan = dtInfo.Rows[0]["ChanDoan"]?.ToString() ?? "";
-                        }
-                    }
-                    catch { }
-
-                    sb.AppendLine($"Bệnh nhân:   {tenBN}");
-                    sb.AppendLine($"Bác sĩ:      {tenBS}");
-                    if (!string.IsNullOrWhiteSpace(chanDoan))
-                        sb.AppendLine($"Chẩn đoán:   {chanDoan}");
-                    sb.AppendLine();
-                    sb.AppendLine("───────────────────────────────────────────────────────");
-                    sb.AppendLine(" STT | Tên thuốc           | SL | Đơn giá    | Thành tiền");
-                    sb.AppendLine("───────────────────────────────────────────────────────");
-
-                    decimal tongTien = 0;
-                    int stt = 1;
-
-                    foreach (DataRow row in dt.Rows)
-                    {
-                        string tenThuoc = row["TenThuoc"]?.ToString() ?? "";
-                        int soLuong = Convert.ToInt32(row["SoLuong"] ?? 0);
-                        decimal donGia = Convert.ToDecimal(row["DonGia"] ?? 0);
-                        decimal thanhTien = Convert.ToDecimal(row["ThanhTien"] ?? 0);
-                        string lieuDung = row["LieuDung"]?.ToString() ?? "";
-
-                        sb.AppendLine($" {stt,3} | {tenThuoc,-20} | {soLuong,2} | {donGia,10:N0} | {thanhTien,12:N0}");
-                        if (!string.IsNullOrWhiteSpace(lieuDung))
-                            sb.AppendLine($"      Liều dùng: {lieuDung}");
-                        sb.AppendLine();
-
-                        tongTien += thanhTien;
-                        stt++;
-                    }
-
-                    sb.AppendLine("───────────────────────────────────────────────────────");
-                    sb.AppendLine($"                          TỔNG CỘNG: {tongTien,12:N0} đ");
-                    sb.AppendLine("───────────────────────────────────────────────────────");
-                    sb.AppendLine();
-                    sb.AppendLine("LƯU Ý:");
-                    sb.AppendLine("- Uống thuốc đúng liều, đúng giờ");
-                    sb.AppendLine("- Tái khám khi có triệu chứng bất thường");
-                    sb.AppendLine("- Bảo quản thuốc ở nơi khô ráo, tránh ánh nắng");
-                    sb.AppendLine();
-                    sb.AppendLine($"                          Bác sĩ khám");
-                    sb.AppendLine($"                        {tenBS}");
-
-                    System.IO.File.WriteAllText(sfd.FileName, sb.ToString(),
-                        new System.Text.UTF8Encoding(true));
-
-                    MessageBox.Show("Đã xuất đơn thuốc thành công!\n" + sfd.FileName,
-                        "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                    // Mở file vừa tạo
-                    try { System.Diagnostics.Process.Start(sfd.FileName); } catch { }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Lỗi xuất file: " + ex.Message, "Lỗi",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                var printer = new DonThuocPrinter(_maPhieuKham);
+                printer.MoXemTruoc(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi khi xuất đơn thuốc:\n" + ex.Message,
+                    "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

@@ -110,8 +110,9 @@ namespace DermaSoft.Forms
             this.lblTagline.Name = "lblTagline";
             this.lblTagline.Size = new System.Drawing.Size(526, 23);
             this.lblTagline.TabIndex = 2;
-            this.lblTagline.Text = "Hệ Thống Quản Lý Phòng Khám Da Liễu";
+            this.lblTagline.Text = "Hệ Thống Quản Lý Phòng Khám DermaSoft Skin\r\n";
             this.lblTagline.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.lblTagline.Click += new System.EventHandler(this.lblTagline_Click);
             // 
             // lblVersion
             // 
@@ -198,6 +199,7 @@ namespace DermaSoft.Forms
             this.lblMatKhau.Size = new System.Drawing.Size(453, 21);
             this.lblMatKhau.TabIndex = 1;
             this.lblMatKhau.Text = "Mật khẩu  *";
+            this.lblMatKhau.Click += new System.EventHandler(this.lblMatKhau_Click);
             // 
             // txtMatKhau
             // 
@@ -329,7 +331,7 @@ namespace DermaSoft.Forms
             this.lblFooter.Name = "lblFooter";
             this.lblFooter.Size = new System.Drawing.Size(526, 53);
             this.lblFooter.TabIndex = 0;
-            this.lblFooter.Text = "© 2026 DermaSoft Clinic · Phần mềm quản lý phòng khám da liễu";
+            this.lblFooter.Text = "© 2026 DermaSoft Clinic · Phần mềm quản lý phòng khám DermaSoft Skin\r\n";
             this.lblFooter.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.lblFooter.Click += new System.EventHandler(this.lblFooter_Click);
             // 

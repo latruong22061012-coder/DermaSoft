@@ -202,9 +202,9 @@ namespace DermaSoft.Forms
             this.lblLogoSub.Location = new System.Drawing.Point(89, 46);
             this.lblLogoSub.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblLogoSub.Name = "lblLogoSub";
-            this.lblLogoSub.Size = new System.Drawing.Size(119, 16);
+            this.lblLogoSub.Size = new System.Drawing.Size(160, 16);
             this.lblLogoSub.TabIndex = 2;
-            this.lblLogoSub.Text = "Phòng Khám Da Liễu";
+            this.lblLogoSub.Text = "Phòng Khám DermaSoft Skin";
             // 
             // pnlTopbar
             // 
@@ -329,9 +329,9 @@ namespace DermaSoft.Forms
             this.lblTitleText.Location = new System.Drawing.Point(64, 22);
             this.lblTitleText.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblTitleText.Name = "lblTitleText";
-            this.lblTitleText.Size = new System.Drawing.Size(523, 28);
+            this.lblTitleText.Size = new System.Drawing.Size(600, 28);
             this.lblTitleText.TabIndex = 4;
-            this.lblTitleText.Text = "DermaSoft — Hệ Thống Quản Lý Phòng Khám Da Liễu";
+            this.lblTitleText.Text = "DermaSoft — Hệ Thống Quản Lý Phòng Khám DermaSoft Skin\r\n";
             // 
             // btnMinimize
             // 

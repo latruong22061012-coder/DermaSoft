@@ -25,6 +25,10 @@ namespace DermaSoft.Forms
         {
             InitializeComponent();
             TaoBoCuc();
+
+            // Reload dashboard mỗi khi form được kích hoạt lại
+            // để biểu đồ tồn kho cập nhật sau khi nhập/xuất kho ở form khác.
+            this.Activated += (s, e) => VeLaiDashboard();
         }
 
         // ══════════════════════════════════════════
@@ -67,9 +71,9 @@ namespace DermaSoft.Forms
             int row2H = Math.Max(220, (int)(remainH * 0.55));
             int row3H = Math.Max(180, remainH - row2H - gap);
 
-            // Row 2: Nhập kho 7 ngày + Thuốc sắp hết hạn
+            // Row 2: Biểu đồ trạng thái tồn kho + Thuốc sắp hết hạn
             int halfW = (contentW - gap) / 2;
-            TaoNhapKho7Ngay(pad, y, halfW, row2H);
+            TaoBieuDoTrangThaiTonKho(pad, y, halfW, row2H);
             TaoThuocSapHetHan(pad + halfW + gap, y, halfW, row2H);
             y += row2H + gap;
 
@@ -197,50 +201,122 @@ namespace DermaSoft.Forms
         }
 
         // ══════════════════════════════════════════
-        // ROW 2 LEFT — NHẬP KHO 7 NGÀY
+        // ROW 2 LEFT — BIỂU ĐỒ TRẠNG THÁI TỒN KHO (DONUT CHART)
+        // — Bao gồm 6 trạng thái đồng bộ với TonKhoForm:
+        //   🚫 Hết hạn  /  ⏰ Sắp hết hạn  /  ⚠️ Cảnh báo  /  ✅ Bình thường
+        //   🚨 Nguy hiểm (tồn cực thấp)  /  📦 Tồn thấp
+        // — Dữ liệu realtime từ SQL Server → tự cập nhật khi nhập/xuất kho.
         // ══════════════════════════════════════════
 
-        private void TaoNhapKho7Ngay(int x, int y, int w, int h)
+        // Màu chuẩn cho 6 trạng thái (khớp với pallete đã thiết kế)
+        private static readonly Color ColorHetHan      = Color.FromArgb(0x7F, 0x1D, 0x1D); // #7F1D1D
+        private static readonly Color ColorSapHetHan   = Color.FromArgb(0xDC, 0x26, 0x26); // #DC2626
+        private static readonly Color ColorCanhBao     = Color.FromArgb(0xF5, 0x9E, 0x0B); // #F59E0B
+        private static readonly Color ColorBinhThuong  = Color.FromArgb(0x16, 0xA3, 0x4A); // #16A34A
+        private static readonly Color ColorNguyHiem    = Color.FromArgb(0xEF, 0x44, 0x44); // #EF4444
+        private static readonly Color ColorTonThap     = Color.FromArgb(0xF9, 0x73, 0x16); // #F97316
+
+        private class TrangThaiTonKho
         {
-            var card = TaoCard(x, y, w, h);
+            public string Icon;
+            public string Ten;
+            public int SoLo;
+            public Color Mau;
+        }
 
-            card.Controls.Add(new Label
-            {
-                Text = "📊  Nhập Kho 7 Ngày Gần Nhất",
-                Font = AppFonts.H4, ForeColor = ColorScheme.TextDark,
-                Location = new Point(16, 12), AutoSize = true, BackColor = Color.Transparent,
-            });
+        /// <summary>
+        /// Thống kê số lô (ChiTietNhapKho) theo 6 trạng thái.
+        /// Logic phân loại khớp với TonKhoForm.LoadData():
+        ///   1) Phân loại theo HSD (Hết hạn / Sắp hết / Cảnh báo / Bình thường)
+        ///   2) Override nếu SoLuongConLai &lt;= ngưỡng (Nguy hiểm / Tồn thấp)
+        /// </summary>
+        private List<TrangThaiTonKho> ThongKeTrangThaiTonKho(out string queryError)
+        {
+            queryError = null;
 
-            var data = new List<KeyValuePair<string, int>>();
-            string queryError = null;
+            int cntHetHan = 0, cntSapHet = 0, cntCanhBao = 0, cntBinhThuong = 0;
+            int cntNguyHiem = 0, cntTonThap = 0;
+
             try
             {
                 using (var conn = DatabaseConnection.GetConnection())
                 using (var cmd = new SqlCommand(
-                    @"SELECT CAST(DATEADD(DAY, -n.n, GETDATE()) AS DATE) AS Ngay,
-                             ISNULL((SELECT COUNT(*) FROM PhieuNhapKho 
-                                     WHERE CAST(NgayNhap AS DATE) = CAST(DATEADD(DAY, -n.n, GETDATE()) AS DATE)), 0) AS SoPhieu
-                      FROM (SELECT 0 AS n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 
-                            UNION SELECT 4 UNION SELECT 5 UNION SELECT 6) n
-                      ORDER BY Ngay ASC", conn))
+                    @"SELECT ctk.SoLuongConLai,
+                             DATEDIFF(DAY, GETDATE(), ctk.HanSuDung) AS SoNgayConLai,
+                             ctk.HanSuDung,
+                             t.DonViTinh
+                      FROM ChiTietNhapKho ctk
+                      INNER JOIN Thuoc t ON t.MaThuoc = ctk.MaThuoc
+                      WHERE ctk.SoLuongConLai > 0
+                        AND t.IsDeleted = 0", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
+                    DateTime today = DateTime.Today;
                     while (reader.Read())
                     {
-                        var ngay = reader.IsDBNull(0) ? "" : reader.GetDateTime(0).ToString("dd/M");
-                        var soPhieu = reader.IsDBNull(1) ? 0 : Convert.ToInt32(reader.GetValue(1));
-                        data.Add(new KeyValuePair<string, int>(ngay, soPhieu));
+                        int slTon    = Convert.ToInt32(reader.GetValue(0));
+                        int soNgay   = Convert.ToInt32(reader.GetValue(1));
+                        DateTime hsd = reader.GetDateTime(2);
+                        string dvt   = reader.IsDBNull(3) ? "" : reader.GetString(3);
+
+                        // Lấy ngưỡng theo đơn vị tính (đồng bộ với TonKhoForm & AppSettings)
+                        int[] nguong = AppSettings.LayNguong(dvt);
+                        int nguongThap = nguong[0];
+                        int nguongNguyHiem = nguong[1];
+
+                        // 1) Override theo SỐ LƯỢNG (ưu tiên cao hơn HSD)
+                        if (slTon <= nguongNguyHiem)
+                        {
+                            cntNguyHiem++;
+                            continue;
+                        }
+                        if (slTon <= nguongThap)
+                        {
+                            cntTonThap++;
+                            continue;
+                        }
+
+                        // 2) Phân loại theo HSD
+                        if (hsd < today)                cntHetHan++;
+                        else if (soNgay < 30)           cntSapHet++;
+                        else if (soNgay < 90)           cntCanhBao++;
+                        else                            cntBinhThuong++;
                     }
                 }
             }
             catch (Exception ex) { queryError = ex.Message; }
 
+            return new List<TrangThaiTonKho>
+            {
+                new TrangThaiTonKho { Icon = "🚫", Ten = "Hết hạn",    SoLo = cntHetHan,    Mau = ColorHetHan      },
+                new TrangThaiTonKho { Icon = "⏰", Ten = "Sắp hết hạn", SoLo = cntSapHet,    Mau = ColorSapHetHan   },
+                new TrangThaiTonKho { Icon = "⚠️", Ten = "Cảnh báo",    SoLo = cntCanhBao,   Mau = ColorCanhBao     },
+                new TrangThaiTonKho { Icon = "✅", Ten = "Bình thường",  SoLo = cntBinhThuong,Mau = ColorBinhThuong  },
+                new TrangThaiTonKho { Icon = "🚨", Ten = "Nguy hiểm",    SoLo = cntNguyHiem,  Mau = ColorNguyHiem    },
+                new TrangThaiTonKho { Icon = "📦", Ten = "Tồn thấp",     SoLo = cntTonThap,   Mau = ColorTonThap     },
+            };
+        }
+
+        private void TaoBieuDoTrangThaiTonKho(int x, int y, int w, int h)
+        {
+            var card = TaoCard(x, y, w, h);
+
+            card.Controls.Add(new Label
+            {
+                Text = "🍯  Trạng Thái Tồn Kho",
+                Font = AppFonts.H4, ForeColor = ColorScheme.TextDark,
+                Location = new Point(16, 12), AutoSize = true, BackColor = Color.Transparent,
+            });
+
+            string queryError;
+            var data = ThongKeTrangThaiTonKho(out queryError);
+            int tongSoLo = data.Sum(d => d.SoLo);
+
             card.Paint += (s, e) =>
             {
                 var g = e.Graphics;
                 g.SmoothingMode = SmoothingMode.AntiAlias;
-
-                int chartX = 50, chartY = 50, chartH = h - 90, chartW = w - 100;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
                 if (queryError != null)
                 {
@@ -249,54 +325,94 @@ namespace DermaSoft.Forms
                     return;
                 }
 
-                if (data.Count == 0 || data.All(d => d.Value == 0))
+                if (tongSoLo == 0)
                 {
                     using (var br = new SolidBrush(ColorScheme.TextLight))
                     {
-                        string msg = "Chưa có phiếu nhập kho trong 7 ngày";
+                        string msg = "Chưa có lô hàng nào trong kho";
                         var sz = g.MeasureString(msg, AppFonts.Body);
                         g.DrawString(msg, AppFonts.Body, br, (w - sz.Width) / 2, h / 2);
                     }
                     return;
                 }
 
-                int maxVal = data.Max(d => d.Value);
-                if (maxVal == 0) maxVal = 1;
+                // ===== Vùng vẽ =====
+                int topPad = 50;
+                int chartAreaY = topPad;
+                int chartAreaH = h - topPad - 16;
 
-                int barGap = 12;
-                int barW = Math.Min(60, Math.Max(20, (chartW - (data.Count - 1) * barGap) / data.Count));
-                int totalBarsW = data.Count * barW + (data.Count - 1) * barGap;
-                int startX = chartX + (chartW - totalBarsW) / 2;
+                int legendW = Math.Max(160, (int)(w * 0.40));   // cột legend bên phải
+                int donutAreaW = w - legendW - 16;
 
-                for (int i = 0; i < data.Count; i++)
+                // ===== Vẽ Donut =====
+                int diameter = Math.Min(donutAreaW - 24, chartAreaH - 8);
+                if (diameter < 80) diameter = 80;
+                int donutX = 12 + (donutAreaW - diameter) / 2;
+                int donutY = chartAreaY + (chartAreaH - diameter) / 2;
+                var donutRect = new Rectangle(donutX, donutY, diameter, diameter);
+
+                float startAngle = -90f;
+                foreach (var d in data)
                 {
-                    int bx = startX + i * (barW + barGap);
-                    int barH = (int)((double)data[i].Value / maxVal * (chartH - 30));
-                    if (barH < 2 && data[i].Value > 0) barH = 2;
-                    int by = chartY + chartH - barH;
+                    if (d.SoLo <= 0) continue;
+                    float sweep = (float)d.SoLo / tongSoLo * 360f;
+                    using (var brush = new SolidBrush(d.Mau))
+                        g.FillPie(brush, donutRect, startAngle, sweep);
+                    startAngle += sweep;
+                }
 
-                    bool isToday = (i == data.Count - 1);
-                    var barColor = isToday ? ColorScheme.Gold : ColorScheme.Primary;
+                // Lỗ giữa donut
+                int holeSize = (int)(diameter * 0.55);
+                int holeX = donutX + (diameter - holeSize) / 2;
+                int holeY = donutY + (diameter - holeSize) / 2;
+                using (var brush = new SolidBrush(Color.White))
+                    g.FillEllipse(brush, holeX, holeY, holeSize, holeSize);
+                using (var pen = new Pen(ColorScheme.Border, 1f))
+                    g.DrawEllipse(pen, holeX, holeY, holeSize, holeSize);
 
-                    using (var brush = new SolidBrush(barColor))
-                        g.FillRectangle(brush, bx, by, barW, barH);
-
-                    if (data[i].Value > 0)
-                    {
-                        string valText = data[i].Value.ToString();
-                        using (var f = new Font("Segoe UI", 8f, FontStyle.Bold))
-                        using (var br = new SolidBrush(ColorScheme.TextDark))
-                        {
-                            var sz = g.MeasureString(valText, f);
-                            g.DrawString(valText, f, br, bx + (barW - sz.Width) / 2, by - 18);
-                        }
-                    }
-
-                    using (var f = new Font("Segoe UI", 7.5f))
+                // Text giữa donut: tổng số lô
+                using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                {
+                    var centerRect = new RectangleF(holeX, holeY + holeSize * 0.20f, holeSize, holeSize * 0.30f);
+                    using (var f = new Font("Segoe UI", 9f, FontStyle.Regular))
                     using (var br = new SolidBrush(ColorScheme.TextGray))
+                        g.DrawString("Tổng số lô", f, br, centerRect, sf);
+
+                    var valueRect = new RectangleF(holeX, holeY + holeSize * 0.42f, holeSize, holeSize * 0.30f);
+                    using (var f = new Font("Segoe UI", 18f, FontStyle.Bold))
+                    using (var br = new SolidBrush(ColorScheme.TextDark))
+                        g.DrawString(tongSoLo.ToString("N0"), f, br, valueRect, sf);
+                }
+
+                // ===== Vẽ Legend =====
+                int legendX = w - legendW + 4;
+                int legendY = chartAreaY + 4;
+                int rowH = Math.Max(22, (chartAreaH - 8) / data.Count);
+
+                using (var fIcon  = new Font("Segoe UI Emoji", 10f))
+                using (var fLabel = new Font("Segoe UI", 9f, FontStyle.Regular))
+                using (var fValue = new Font("Segoe UI", 9f, FontStyle.Bold))
+                using (var brText = new SolidBrush(ColorScheme.TextDark))
+                using (var brGray = new SolidBrush(ColorScheme.TextGray))
+                {
+                    for (int i = 0; i < data.Count; i++)
                     {
-                        var sz = g.MeasureString(data[i].Key, f);
-                        g.DrawString(data[i].Key, f, br, bx + (barW - sz.Width) / 2, chartY + chartH + 6);
+                        var d = data[i];
+                        int ry = legendY + i * rowH;
+
+                        // ô màu
+                        using (var brush = new SolidBrush(d.Mau))
+                            g.FillRectangle(brush, legendX, ry + 4, 12, 12);
+
+                        // icon + tên
+                        g.DrawString(d.Icon, fIcon, brText, legendX + 16, ry + 1);
+                        g.DrawString(d.Ten,  fLabel, brText, legendX + 38, ry + 3);
+
+                        // số lô + %
+                        float pct = tongSoLo > 0 ? (float)d.SoLo / tongSoLo * 100f : 0f;
+                        string right = d.SoLo.ToString() + "  (" + pct.ToString("0.#") + "%)";
+                        var sz = g.MeasureString(right, fValue);
+                        g.DrawString(right, fValue, brGray, legendX + legendW - 12 - sz.Width, ry + 3);
                     }
                 }
             };

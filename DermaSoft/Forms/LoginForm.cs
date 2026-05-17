@@ -125,7 +125,7 @@ namespace DermaSoft.Forms
         private void LnkQuenMatKhau_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             MessageBox.Show(
-                "Vui lòng liên hệ quản trị viên để được cấp lại mật khẩu.\n\nEmail: admin@darmaclinic.vn",
+                "Vui lòng liên hệ quản trị viên để được cấp lại mật khẩu.",
                 "Quên mật khẩu",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
@@ -459,6 +459,16 @@ namespace DermaSoft.Forms
         private void guna2Button1_Click(object sender, EventArgs e)
         {
             this.Close();
+        }
+
+        private void lblTagline_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void lblMatKhau_Click(object sender, EventArgs e)
+        {
+
         }
     }
 

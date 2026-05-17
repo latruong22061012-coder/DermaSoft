@@ -1028,7 +1028,7 @@
             this.btnHuyThe.Name = "btnHuyThe";
             this.btnHuyThe.Size = new System.Drawing.Size(323, 48);
             this.btnHuyThe.TabIndex = 1;
-            this.btnHuyThe.Text = "Hủy Thẻ";
+            this.btnHuyThe.Text = "🔒 Khóa Thẻ";
             this.btnHuyThe.Enabled = false;
             // 
             // MemberForm

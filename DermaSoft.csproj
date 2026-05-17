@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -109,6 +109,7 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="DermaSoft\Forms\DashboardQuanKhoForm.Designer.cs" />
+    <Compile Include="DermaSoft\Forms\DonThuocPrinter.cs" />
     <Compile Include="DermaSoft\Forms\HinhAnhForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -299,11 +300,24 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <None Include="DermaSoft\app.manifest" />
+    <None Include="DermaSoft\docs\BAOCAO_DB.md" />
+    <None Include="DermaSoft\docs\BAOCAO_PHANTICHTHIETKE.md" />
+    <None Include="DermaSoft\docs\BAOCAO_SW.md" />
+    <None Include="DermaSoft\docs\DEMO_SCRIPT.md" />
+    <None Include="DermaSoft\docs\MOTA_LUOCDO.md" />
+    <None Include="DermaSoft\docs\PHANTICH_DACHUYENDE.md" />
+    <None Include="DermaSoft\docs\POWERPOINT_OUTLINE.md" />
+    <None Include="DermaSoft\docs\PPT_OUTLINE_DB.md" />
+    <None Include="DermaSoft\docs\PPT_OUTLINE_SW.md" />
+    <None Include="DermaSoft\docs\PROMPT_CANVA_DB.md" />
+    <None Include="DermaSoft\docs\PROMPT_CANVA_SW.md" />
     <None Include="DermaSoft\Enums\README.md" />
     <None Include="DermaSoft\FEATURE_KEDONTHUOC_UPGRADE.md" />
     <None Include="DermaSoft\FEATURE_SQL_CONNECTION_CHECK.md" />
     <None Include="DermaSoft\TEST_PLAN.md" />
     <None Include="DermaSoft\TEST_TONKHO.md" />
+    <None Include="DermaSoft\Web API\openapi.json" />
+    <None Include="DermaSoft\Web API\openapi.yaml" />
     <None Include="ENUM_SUMMARY_VI.md" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
@@ -315,6 +329,7 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <None Include="_cleanup.ps1" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -332,17 +347,12 @@
     <Content Include="DermaSoft\Data\MIGRATION_DONGBO_DOANHTHU.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_FIX_TONKHO.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_FIX_TONKHO_BUOC2.sql" />
+    <Content Include="DermaSoft\Data\MIGRATION_KHOATHE_THANHVIEN.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_SOTHUTU.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_SOTHUTU_LICHHEN.sql" />
     <Content Include="DermaSoft\Data\TEST_TONKHO_AUTO.sql" />
-    <Content Include="ENUM_COMPLETION_REPORT.txt" />
-    <None Include="Resources\logo.png" />
     <None Include="Resources\logo1.png" />
-    <None Include="Resources\logo2.png" />
     <None Include="Resources\logoMain.png" />
-    <None Include="Resources\logo%281%291.png" />
-    <None Include="Resources\Iconsmind-Outline-Close.512.png" />
-    <None Include="Resources\Ionic-Ionicons-Close.512.png" />
     <None Include="Resources\logoRound.png" />
     <None Include="Resources\closeIcon50.png" />
     <Content Include="Wireframes\DermaSoft_Wireframes.html" />

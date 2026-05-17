@@ -13,6 +13,7 @@ namespace DermaSoft.Forms
         // ══════════════════════════════════════════════════════════════════════
         private int _maBNDangChon = -1;
         private bool _daCoThe = false;
+        private bool _daKhoa = false;
         private string _tuKhoa = "";
 
         // ── Màu badge ──────────────────────────────────────────────────────
@@ -39,11 +40,43 @@ namespace DermaSoft.Forms
 
         private void MemberForm_Load(object sender, EventArgs e)
         {
+            // Tự động đảm bảo schema DaKhoa/NgayKhoa tồn tại (idempotent)
+            // → Không cần chạy migration SQL thủ công, tránh grid rỗng do
+            //   lỗi "Invalid column name 'DaKhoa'" khi SELECT.
+            DamBaoColumnKhoaThe();
+
             cboFilterHang.SelectedIndex = 0;
             CaiDatCot();
             DatTierCardMacDinh();
             HienThiTrangThaiChuaChon();
             LoadDanhSachThanhVien();
+        }
+
+        /// <summary>
+        /// Tự động thêm cột DaKhoa / NgayKhoa vào ThanhVienInfo nếu chưa có.
+        /// Đảm bảo chức năng Khóa Thẻ hoạt động không cần chạy migration thủ công.
+        /// Chạy một lần duy nhất, an toàn khi gọi nhiều lần (idempotent).
+        /// </summary>
+        private void DamBaoColumnKhoaThe()
+        {
+            try
+            {
+                DatabaseConnection.ExecuteNonQuery(@"
+                    IF NOT EXISTS (SELECT 1 FROM sys.columns
+                                   WHERE object_id = OBJECT_ID('ThanhVienInfo')
+                                     AND name = 'DaKhoa')
+                        ALTER TABLE ThanhVienInfo ADD DaKhoa BIT NOT NULL DEFAULT 0;
+
+                    IF NOT EXISTS (SELECT 1 FROM sys.columns
+                                   WHERE object_id = OBJECT_ID('ThanhVienInfo')
+                                     AND name = 'NgayKhoa')
+                        ALTER TABLE ThanhVienInfo ADD NgayKhoa DATETIME NULL;");
+            }
+            catch
+            {
+                // Bỏ qua — nếu không có quyền ALTER TABLE, query SELECT bên dưới
+                // vẫn có thể fail, nhưng ít nhất đã cố gắng auto-migrate.
+            }
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -71,15 +104,17 @@ namespace DermaSoft.Forms
                         bn.MaBenhNhan,
                         tvi.MaThanhVien,
                         tvi.MaHang,
+                        ISNULL(tvi.DaKhoa, 0)                                   AS DaKhoa,
                         bn.HoTen,
                         ISNULL(htv.TenHang,  N'—')                              AS HangTV,
                         ISNULL(tvi.DiemTichLuy, 0)                              AS DiemTichLuy,
                         ISNULL(tvi.SoLanKham,   0)                              AS SoLanKham,
                         ISNULL(CAST(tvi.TyLeHaiLong AS INT), 0)                 AS TyLeHaiLong,
                         ISNULL(FORMAT(tvi.NgayTaoTaiKhoan, 'MM/yyyy'), N'—')    AS NgayTaoTV,
-                        CASE WHEN tvi.MaThanhVien IS NULL
-                             THEN N'Chưa có thẻ'
-                             ELSE N'Có thẻ'
+                        CASE
+                             WHEN tvi.MaThanhVien IS NULL        THEN N'Chưa có thẻ'
+                             WHEN ISNULL(tvi.DaKhoa, 0) = 1      THEN N'Đã khóa'
+                             ELSE                                     N'Có thẻ'
                         END                                                      AS TrangThaiThe
                     FROM BenhNhan        bn
                     LEFT JOIN ThanhVienInfo   tvi ON bn.MaBenhNhan = tvi.MaBenhNhan
@@ -164,6 +199,13 @@ namespace DermaSoft.Forms
                     style.SelectionBackColor = Color.FromArgb(220, 252, 231);
                     style.SelectionForeColor = Color.FromArgb(21, 101, 52);
                 }
+                else if (tt == "Đã khóa")
+                {
+                    style.BackColor = Color.FromArgb(254, 226, 226); // đỏ nhạt
+                    style.ForeColor = Color.FromArgb(185, 28, 28);
+                    style.SelectionBackColor = Color.FromArgb(254, 226, 226);
+                    style.SelectionForeColor = Color.FromArgb(185, 28, 28);
+                }
                 else
                 {
                     style.BackColor = ClrChuaThe;
@@ -198,13 +240,17 @@ namespace DermaSoft.Forms
             DataRow row = dt.Rows[e.RowIndex];
             _maBNDangChon = Convert.ToInt32(row["MaBenhNhan"]);
             _daCoThe = row["MaThanhVien"] != DBNull.Value;
+            _daKhoa = _daCoThe && row.Table.Columns.Contains("DaKhoa")
+                      && row["DaKhoa"] != DBNull.Value
+                      && Convert.ToBoolean(row["DaKhoa"]);
 
             if (_daCoThe)
             {
-                // Có thẻ → hiện thông tin chi tiết, disable đăng ký, enable hủy
+                // Có thẻ → hiện thông tin chi tiết, disable đăng ký, enable khóa/mở khóa
                 LoadChiTietThanhVien(_maBNDangChon);
                 btnDangKyThe.Enabled = false;
                 btnHuyThe.Enabled = true;
+                CapNhatNutKhoaThe();
             }
             else
             {
@@ -212,6 +258,24 @@ namespace DermaSoft.Forms
                 HienThiTrangThaiChuaThe(row["HoTen"]?.ToString() ?? "");
                 btnDangKyThe.Enabled = true;
                 btnHuyThe.Enabled = false;
+                btnHuyThe.Text = "🔒 Khóa Thẻ";
+            }
+        }
+
+        /// <summary>Cập nhật text + màu nút dựa trên trạng thái khóa hiện tại.</summary>
+        private void CapNhatNutKhoaThe()
+        {
+            if (_daKhoa)
+            {
+                btnHuyThe.Text = "🔓 Mở Khóa Thẻ";
+                btnHuyThe.FillColor = Color.FromArgb(21, 101, 52);     // Xanh đậm
+                btnHuyThe.FillColor2 = Color.FromArgb(34, 197, 94);    // Xanh lá
+            }
+            else
+            {
+                btnHuyThe.Text = "🔒 Khóa Thẻ";
+                btnHuyThe.FillColor = Color.Maroon;
+                btnHuyThe.FillColor2 = Color.OrangeRed;
             }
         }
 
@@ -399,10 +463,12 @@ namespace DermaSoft.Forms
 
                 // Reload và chọn lại BN vừa đăng ký
                 _daCoThe = true;
+                _daKhoa = false;
                 LoadDanhSachThanhVien();
                 LoadChiTietThanhVien(_maBNDangChon);
                 btnDangKyThe.Enabled = false;
                 btnHuyThe.Enabled = true;
+                CapNhatNutKhoaThe();
             }
             catch (Exception ex)
             {
@@ -412,38 +478,59 @@ namespace DermaSoft.Forms
         }
 
         // ══════════════════════════════════════════════════════════════════════
-        // HỦY THẺ THÀNH VIÊN
+        // KHÓA / MỞ KHÓA THẺ THÀNH VIÊN
         // ══════════════════════════════════════════════════════════════════════
         private void BtnHuyThe_Click(object sender, EventArgs e)
         {
             if (_maBNDangChon <= 0 || !_daCoThe) return;
 
             string tenBN = lblTenBN.Text;
-            var xacNhan = MessageBox.Show(
-                $"⚠️  Bạn có chắc muốn HỦY thẻ thành viên của \"{tenBN}\"?\n\nToàn bộ điểm tích lũy sẽ bị mất. Hành động này không thể hoàn tác!",
-                "Xác nhận hủy thẻ",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            bool moKhoa = _daKhoa; // Nếu đang khóa → bấm nút sẽ mở khóa
+
+            string tieuDe = moKhoa ? "Xác nhận mở khóa thẻ" : "Xác nhận khóa thẻ";
+            string thongBao = moKhoa
+                ? $"🔓 Bạn có chắc muốn MỞ KHÓA thẻ thành viên của \"{tenBN}\"?\n\nKhách hàng sẽ được sử dụng thẻ và tích điểm như bình thường."
+                : $"🔒 Bạn có chắc muốn KHÓA thẻ thành viên của \"{tenBN}\"?\n\nThẻ sẽ tạm ngưng sử dụng. Điểm tích lũy và lịch sử được giữ nguyên, có thể mở khóa lại sau.";
+
+            var xacNhan = MessageBox.Show(thongBao, tieuDe,
+                MessageBoxButtons.YesNo,
+                moKhoa ? MessageBoxIcon.Question : MessageBoxIcon.Warning);
 
             if (xacNhan != DialogResult.Yes) return;
 
             try
             {
-                DatabaseConnection.ExecuteNonQuery(
-                    "DELETE FROM ThanhVienInfo WHERE MaBenhNhan = @MaBN",
-                    p => p.AddWithValue("@MaBN", _maBNDangChon));
+                if (moKhoa)
+                {
+                    DatabaseConnection.ExecuteNonQuery(@"
+                        UPDATE ThanhVienInfo
+                        SET DaKhoa = 0, NgayKhoa = NULL
+                        WHERE MaBenhNhan = @MaBN",
+                        p => p.AddWithValue("@MaBN", _maBNDangChon));
 
-                MessageBox.Show($"Đã hủy thẻ thành viên của \"{tenBN}\".",
-                    "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    _daKhoa = false;
+                    MessageBox.Show($"Đã mở khóa thẻ thành viên của \"{tenBN}\". 🔓",
+                        "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    DatabaseConnection.ExecuteNonQuery(@"
+                        UPDATE ThanhVienInfo
+                        SET DaKhoa = 1, NgayKhoa = GETDATE()
+                        WHERE MaBenhNhan = @MaBN",
+                        p => p.AddWithValue("@MaBN", _maBNDangChon));
 
-                _daCoThe = false;
+                    _daKhoa = true;
+                    MessageBox.Show($"Đã khóa thẻ thành viên của \"{tenBN}\". 🔒",
+                        "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+
                 LoadDanhSachThanhVien();
-                HienThiTrangThaiChuaThe(tenBN);
-                btnDangKyThe.Enabled = true;
-                btnHuyThe.Enabled = false;
+                CapNhatNutKhoaThe();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi hủy thẻ:\n" + ex.Message,
+                MessageBox.Show("Lỗi cập nhật trạng thái thẻ:\n" + ex.Message,
                     "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

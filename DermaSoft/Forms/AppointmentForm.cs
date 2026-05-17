@@ -34,6 +34,10 @@ namespace DermaSoft.Forms
             cmbFilter.SelectedIndexChanged += CmbFilter_SelectedIndexChanged;
             dgvLichHen.CellClick += DgvLichHen_CellClick;
 
+            // Đồng bộ combo giờ hẹn khi đổi BS hoặc đổi ngày hẹn
+            cmbBacSi.SelectedIndexChanged += (s, e) => CapNhatGioHenTheoBacSi();
+            dtpThoiGian.ValueChanged += (s, e) => CapNhatGioHenTheoBacSi();
+
             this.Load += (s, e) => KhoiTao();
         }
 
@@ -46,6 +50,7 @@ namespace DermaSoft.Forms
             cmbFilter.SelectedIndex = 0;
             LoadDanhSachBacSi();
             KhoiTaoCmbGioHen();   // ← thêm dòng này
+            CapNhatGioHenTheoBacSi(); // đồng bộ với BS + ngày mặc định
 
 
             // ── Thêm cột cho dgvLichHen ───────────────────────────────────────
@@ -173,6 +178,129 @@ namespace DermaSoft.Forms
         }
 
         /// <summary>
+        /// Đồng bộ combo giờ hẹn với ca làm việc của BÁC SĨ đang chọn
+        /// vào NGÀY HẸN đang chọn, đồng thời LOẠI các khung giờ đã bị 
+        /// BS đó book với lịch hẹn khác (trừ lịch đã hủy).
+        /// 
+        /// Logic:
+        ///   1. Không chọn BS → dùng giờ mở/đóng cửa phòng khám (fallback cũ).
+        ///   2. BS không có ca hôm đó → combo hiện 1 item thông báo, disable.
+        ///   3. BS có ca → build slot 30 phút trong khoảng [GioBatDau, GioKetThuc)
+        ///      của từng ca, loại bỏ slot đã trùng lịch hẹn hoạt động của BS đó.
+        /// </summary>
+        private void CapNhatGioHenTheoBacSi()
+        {
+            // Tránh đệ quy khi re-bind cmbBacSi DataSource
+            if (cmbBacSi == null || cmbGioHen == null) return;
+
+            // Lưu giờ đang chọn để phục hồi nếu vẫn còn hợp lệ
+            string gioCu = cmbGioHen.SelectedItem?.ToString();
+
+            int? maBacSi = null;
+            if (cmbBacSi.SelectedValue != null &&
+                int.TryParse(cmbBacSi.SelectedValue.ToString(), out int id))
+                maBacSi = id;
+
+            DateTime ngayHen = dtpThoiGian.Value.Date;
+
+            // Không chọn BS → fallback giờ phòng khám
+            if (maBacSi == null)
+            {
+                KhoiTaoCmbGioHen();
+                return;
+            }
+
+            try
+            {
+                // 1. Lấy ca làm việc của BS trong ngày
+                DataTable dtCa = DatabaseConnection.ExecuteQuery(@"
+                    SELECT clv.GioBatDau, clv.GioKetThuc, clv.TenCa
+                    FROM PhanCongCa pcc
+                    JOIN CaLamViec  clv ON pcc.MaCa = clv.MaCa
+                    WHERE pcc.MaNguoiDung = @MaBS
+                      AND pcc.NgayLamViec = @Ngay
+                    ORDER BY clv.GioBatDau",
+                    p =>
+                    {
+                        p.AddWithValue("@MaBS", maBacSi.Value);
+                        p.AddWithValue("@Ngay", ngayHen);
+                    });
+
+                cmbGioHen.Items.Clear();
+
+                if (dtCa == null || dtCa.Rows.Count == 0)
+                {
+                    cmbGioHen.Items.Add("(BS không có ca ngày này)");
+                    cmbGioHen.SelectedIndex = 0;
+                    cmbGioHen.Enabled = false;
+                    return;
+                }
+                cmbGioHen.Enabled = true;
+
+                // 2. Lấy các slot đã được BS đó book (không tính lịch đã hủy)
+                var daBook = new System.Collections.Generic.HashSet<string>();
+                DataTable dtBook = DatabaseConnection.ExecuteQuery(@"
+                    SELECT FORMAT(ThoiGianHen, 'HH:mm') AS Gio
+                    FROM LichHen
+                    WHERE MaNguoiDung = @MaBS
+                      AND CAST(ThoiGianHen AS DATE) = @Ngay
+                      AND TrangThai <> 3",
+                    p =>
+                    {
+                        p.AddWithValue("@MaBS", maBacSi.Value);
+                        p.AddWithValue("@Ngay", ngayHen);
+                    });
+                if (dtBook != null)
+                    foreach (DataRow r in dtBook.Rows)
+                        daBook.Add(r["Gio"].ToString());
+
+                // 3. Build slot 30 phút trong từng ca, loại slot đã book
+                DateTime now = DateTime.Now;
+                bool laHomNay = ngayHen.Date == DateTime.Today;
+
+                foreach (DataRow ca in dtCa.Rows)
+                {
+                    TimeSpan tsStart = (TimeSpan)ca["GioBatDau"];
+                    TimeSpan tsEnd = (TimeSpan)ca["GioKetThuc"];
+
+                    for (var t = tsStart; t < tsEnd; t = t.Add(TimeSpan.FromMinutes(30)))
+                    {
+                        string label = $"{t.Hours:D2}:{t.Minutes:D2}";
+
+                        // Bỏ qua giờ đã trôi qua nếu là hôm nay
+                        if (laHomNay && ngayHen.Add(t) < now.AddMinutes(-1))
+                            continue;
+
+                        // Bỏ qua slot đã bị book
+                        if (daBook.Contains(label))
+                            continue;
+
+                        cmbGioHen.Items.Add(label);
+                    }
+                }
+
+                if (cmbGioHen.Items.Count == 0)
+                {
+                    cmbGioHen.Items.Add("(Hết slot trống)");
+                    cmbGioHen.SelectedIndex = 0;
+                    cmbGioHen.Enabled = false;
+                    return;
+                }
+
+                // Phục hồi lựa chọn cũ nếu vẫn còn hợp lệ
+                if (!string.IsNullOrEmpty(gioCu) && cmbGioHen.Items.Contains(gioCu))
+                    cmbGioHen.SelectedItem = gioCu;
+                else
+                    cmbGioHen.SelectedIndex = 0;
+            }
+            catch
+            {
+                // Lỗi query → fallback về khung giờ phòng khám
+                KhoiTaoCmbGioHen();
+            }
+        }
+
+        /// <summary>
         /// Load lịch hẹn theo ngày được chọn trên calendar.
         /// Áp dụng thêm filter trạng thái và từ khoá tìm kiếm nếu có.
         /// </summary>
@@ -183,7 +311,7 @@ namespace DermaSoft.Forms
                 string sql = @"
                     SELECT
                         lh.MaLichHen,
-                        lh.SoThuTu,
+                        stt.SoThuTu,
                         FORMAT(lh.ThoiGianHen, 'HH:mm')            AS ThoiGianHen,
                         ISNULL(bn.HoTen,
                             CASE WHEN lh.SoDienThoaiKhach IS NOT NULL
@@ -209,6 +337,18 @@ namespace DermaSoft.Forms
                     FROM LichHen lh
                     LEFT JOIN BenhNhan  bn ON lh.MaBenhNhan  = bn.MaBenhNhan
                     LEFT JOIN NguoiDung nd ON lh.MaNguoiDung = nd.MaNguoiDung
+                    -- Tính STT TỰ ĐỘNG: chỉ lịch đã xác nhận/tiếp nhận (TrangThai 1,2) 
+                    -- sắp xếp theo giờ hẹn, phân theo bác sĩ
+                    LEFT JOIN (
+                        SELECT MaLichHen,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY CAST(ThoiGianHen AS DATE), MaNguoiDung
+                                   ORDER BY ThoiGianHen ASC
+                               ) AS SoThuTu
+                        FROM LichHen
+                        WHERE TrangThai IN (1, 2)
+                          AND CAST(ThoiGianHen AS DATE) = @Ngay
+                    ) stt ON lh.MaLichHen = stt.MaLichHen
                     WHERE CAST(lh.ThoiGianHen AS DATE) = @Ngay";
 
                 // Filter trạng thái
@@ -294,6 +434,7 @@ namespace DermaSoft.Forms
         {
             LoadLichHen(e.Start, txtSearch.Text, LayTrangThaiFilter());
             LoadDanhSachBacSi(e.Start);
+            CapNhatGioHenTheoBacSi();
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -621,6 +762,13 @@ namespace DermaSoft.Forms
 
                 // Gộp ngày từ DatePicker + giờ từ ComboBox TRƯỚC
                 string gioChon = cmbGioHen.SelectedItem?.ToString() ?? "09:00";
+                // Validate format "HH:mm" — tránh item placeholder như "(Hết slot trống)"
+                if (!System.Text.RegularExpressions.Regex.IsMatch(gioChon, @"^\d{2}:\d{2}$"))
+                {
+                    MessageBox.Show("Vui lòng chọn khung giờ hợp lệ (BS phải có ca làm việc ngày này).",
+                        "Giờ không hợp lệ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
                 int gio = int.Parse(gioChon.Split(':')[0]);
                 int phut = int.Parse(gioChon.Split(':')[1]);
                 DateTime thoiGianHen = dtpThoiGian.Value.Date.AddHours(gio).AddMinutes(phut);
@@ -630,6 +778,17 @@ namespace DermaSoft.Forms
                 {
                     MessageBox.Show("Thời gian hẹn phải từ hiện tại trở đi.",
                         "Thời gian không hợp lệ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Kiểm tra cuối: BS có bị trùng giờ với lịch khác không? 
+                // (Phòng race-condition: combo đã refresh nhưng có BS khác vừa book)
+                if (maBacSi != null && KiemTraTrungGioBacSi(maBacSi.Value, thoiGianHen))
+                {
+                    MessageBox.Show(
+                        "Bác sĩ đã có lịch hẹn khác vào khung giờ này.\nVui lòng chọn giờ khác.",
+                        "Trùng giờ hẹn", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    CapNhatGioHenTheoBacSi();
                     return;
                 }
 
@@ -699,6 +858,7 @@ namespace DermaSoft.Forms
                 txtGhiChu.Text = "";
                 LoadLichHen(thoiGian.Date, txtSearch.Text, LayTrangThaiFilter());
                 mcLichHen.SetDate(thoiGian.Date);
+                CapNhatGioHenTheoBacSi();  // Cập nhật slot trống mới
             }
             else
             {
@@ -711,6 +871,26 @@ namespace DermaSoft.Forms
         private void AppointmentForm_Load(object sender, EventArgs e)
         {
 
+        }
+
+        /// <summary>Kiểm tra BS đã có lịch hẹn hoạt động (không hủy) ở đúng khung giờ chưa.</summary>
+        private bool KiemTraTrungGioBacSi(int maBacSi, DateTime thoiGianHen)
+        {
+            try
+            {
+                DataTable dt = DatabaseConnection.ExecuteQuery(@"
+                    SELECT 1 FROM LichHen
+                    WHERE MaNguoiDung = @MaBS
+                      AND ThoiGianHen = @Gio
+                      AND TrangThai <> 3",
+                    p =>
+                    {
+                        p.AddWithValue("@MaBS", maBacSi);
+                        p.AddWithValue("@Gio", thoiGianHen);
+                    });
+                return dt != null && dt.Rows.Count > 0;
+            }
+            catch { return false; }
         }
     }
 }
