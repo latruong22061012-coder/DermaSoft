@@ -319,6 +319,7 @@
     <None Include="DermaSoft\Web API\openapi.json" />
     <None Include="DermaSoft\Web API\openapi.yaml" />
     <None Include="ENUM_SUMMARY_VI.md" />
+    <None Include="HUONG_DAN_CAI_DAT_VA_SU_DUNG.md" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
@@ -348,6 +349,7 @@
     <Content Include="DermaSoft\Data\MIGRATION_FIX_TONKHO.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_FIX_TONKHO_BUOC2.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_KHOATHE_THANHVIEN.sql" />
+    <Content Include="DermaSoft\Data\MIGRATION_PHANCONG_3CA.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_SOTHUTU.sql" />
     <Content Include="DermaSoft\Data\MIGRATION_SOTHUTU_LICHHEN.sql" />
     <Content Include="DermaSoft\Data\TEST_TONKHO_AUTO.sql" />

@@ -25,11 +25,13 @@ BEGIN
     );
 
     -- Seed đơn giá mặc định
+    -- SoGioChuanNgay = 12 (= 3 ca × 4 tiếng) — đồng bộ với quy định mỗi NV
+    -- được phép phân tối đa 3 ca/ngày (Sáng + Chiều + Tối).
     INSERT INTO CauHinhLuong (MaVaiTro, LoaiTinhLuong, DonGia, HeSoTangCa, HeSoNgayLe, SoGioChuanNgay, SoCaChuanNgay, NgayHieuLuc, GhiChu)
     VALUES
-    (1, 'THEO_THANG', 25000000, 1.0, 1.0, 0, 0, '2026-04-01', N'Admin — lương cố định 25tr/tháng'),
-    (2, 'THEO_BN',       250000, 1.5, 2.0, 8, 2, '2026-04-01', N'Bác Sĩ — 250k/BN hoàn thành, tăng ca ×1.5'),
-    (3, 'THEO_GIO',       50000, 1.5, 2.0, 8, 2, '2026-04-01', N'Lễ Tân — 50k/giờ, tăng ca ×1.5');
+    (1, 'THEO_THANG', 25000000, 1.0, 1.0,  0, 0, '2026-04-01', N'Admin — lương cố định 25tr/tháng'),
+    (2, 'THEO_BN',       250000, 1.5, 2.0, 12, 3, '2026-04-01', N'Bác Sĩ — 250k/BN hoàn thành, tăng ca ×1.5'),
+    (3, 'THEO_GIO',       50000, 1.5, 2.0, 12, 3, '2026-04-01', N'Lễ Tân — 50k/giờ, tăng ca ×1.5');
 
     PRINT N'✓ Đã tạo bảng CauHinhLuong + seed 3 mức lương';
 END

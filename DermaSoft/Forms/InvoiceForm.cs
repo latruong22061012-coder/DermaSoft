@@ -484,7 +484,12 @@ namespace DermaSoft.Forms
                     FROM PhieuKham pk
                     JOIN BenhNhan  bn ON pk.MaBenhNhan  = bn.MaBenhNhan
                     JOIN NguoiDung nd ON pk.MaNguoiDung = nd.MaNguoiDung
-                    LEFT JOIN ThanhVienInfo tvi ON bn.MaBenhNhan = tvi.MaBenhNhan
+                    -- Chỉ JOIN thẻ thành viên khi thẻ KHÔNG bị khóa (DaKhoa = 0).
+                    -- Khi Admin khóa thẻ → các lần thanh toán sau đó sẽ không
+                    -- nhận được ưu đãi theo cấp thẻ (TenHang sẽ rỗng).
+                    LEFT JOIN ThanhVienInfo tvi
+                        ON bn.MaBenhNhan = tvi.MaBenhNhan
+                       AND ISNULL(tvi.DaKhoa, 0) = 0
                     LEFT JOIN HangThanhVien htv ON tvi.MaHang    = htv.MaHang
                     WHERE pk.MaPhieuKham = @MaPK";
 

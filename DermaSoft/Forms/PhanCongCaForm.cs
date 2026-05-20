@@ -503,6 +503,8 @@ namespace DermaSoft.Forms
             y += 46;
 
             // ── Nút Xóa ──
+            // Theo quy định: Sau khi Admin phân công ca, không được phép xóa lịch
+            // đã phân ca; chỉ được phép cập nhật. Nút Xóa được ẩn hoàn toàn.
             btnXoa = new Guna2Button
             {
                 Text = "🗑️ Xóa Phân Công",
@@ -514,9 +516,9 @@ namespace DermaSoft.Forms
                 Size = new Size(W, 34),
                 Cursor = Cursors.Hand,
                 Enabled = false,
+                Visible = false,
                 DisabledState = { FillColor = Color.FromArgb(180, ColorScheme.Danger), ForeColor = Color.FromArgb(180, Color.White) },
             };
-            btnXoa.Click += BtnXoa_Click;
             pnlCard.Controls.Add(btnXoa);
         }
 
@@ -844,7 +846,8 @@ namespace DermaSoft.Forms
             _maPhanCongDangChon = maPC;
             lblFormTitle.Text = "✏️ Sửa Phân Công — PC" + maPC.ToString("D3");
             btnLuu.Text = "💾  Cập Nhật";
-            btnXoa.Enabled = true;
+            // Không cho phép xóa lịch đã phân ca — chỉ cho phép cập nhật.
+            btnXoa.Enabled = false;
             lblError.Text = "";
         }
 
@@ -887,7 +890,23 @@ namespace DermaSoft.Forms
                 {
                     if (_maPhanCongDangChon == -1)
                     {
-                        // KIỂM TRA TRÙNG
+                        // KIỂM TRA TRÙNG CA — mỗi nhân viên chỉ được phân
+                        // mỗi ca (Sáng / Chiều / Tối) tối đa 1 lần / ngày.
+                        using (var chkCa = new SqlCommand(
+                            @"SELECT COUNT(*) FROM PhanCongCa 
+                              WHERE MaNguoiDung = @MaNV AND NgayLamViec = @Ngay AND MaCa = @MaCa", conn))
+                        {
+                            chkCa.Parameters.AddWithValue("@MaNV", maNV);
+                            chkCa.Parameters.AddWithValue("@Ngay", ngayLam);
+                            chkCa.Parameters.AddWithValue("@MaCa", maCa);
+                            if (Convert.ToInt32(chkCa.ExecuteScalar()) > 0)
+                            {
+                                lblError.Text = "NV này đã được phân công ca này trong ngày " + ngayLam.ToString("dd/MM/yyyy") + ".";
+                                return;
+                            }
+                        }
+
+                        // KIỂM TRA TỔNG SỐ CA / NGÀY — tối đa 3 ca (Sáng + Chiều + Tối).
                         using (var chk = new SqlCommand(
                             @"SELECT COUNT(*) FROM PhanCongCa 
                               WHERE MaNguoiDung = @MaNV AND NgayLamViec = @Ngay", conn))
@@ -895,9 +914,9 @@ namespace DermaSoft.Forms
                             chk.Parameters.AddWithValue("@MaNV", maNV);
                             chk.Parameters.AddWithValue("@Ngay", ngayLam);
                             int count = Convert.ToInt32(chk.ExecuteScalar());
-                            if (count > 0)
+                            if (count >= 3)
                             {
-                                lblError.Text = "NV này đã có ca trong ngày " + ngayLam.ToString("dd/MM/yyyy") + ".";
+                                lblError.Text = "NV này đã được phân tối đa 3 ca trong ngày " + ngayLam.ToString("dd/MM/yyyy") + ".";
                                 return;
                             }
                         }
@@ -916,7 +935,25 @@ namespace DermaSoft.Forms
                     }
                     else
                     {
-                        // KIỂM TRA TRÙNG (trừ bản ghi hiện tại)
+                        // KIỂM TRA TRÙNG CA (trừ bản ghi hiện tại) — không trùng ca
+                        // (Sáng/Chiều/Tối) đã phân của NV trong cùng ngày.
+                        using (var chkCa = new SqlCommand(
+                            @"SELECT COUNT(*) FROM PhanCongCa 
+                              WHERE MaNguoiDung = @MaNV AND NgayLamViec = @Ngay
+                                AND MaCa = @MaCa AND MaPhanCong <> @MaPC", conn))
+                        {
+                            chkCa.Parameters.AddWithValue("@MaNV", maNV);
+                            chkCa.Parameters.AddWithValue("@Ngay", ngayLam);
+                            chkCa.Parameters.AddWithValue("@MaCa", maCa);
+                            chkCa.Parameters.AddWithValue("@MaPC", _maPhanCongDangChon);
+                            if (Convert.ToInt32(chkCa.ExecuteScalar()) > 0)
+                            {
+                                lblError.Text = "NV này đã được phân công ca này trong ngày " + ngayLam.ToString("dd/MM/yyyy") + ".";
+                                return;
+                            }
+                        }
+
+                        // KIỂM TRA TỔNG SỐ CA / NGÀY — tối đa 3 ca (trừ bản ghi hiện tại).
                         using (var chk = new SqlCommand(
                             @"SELECT COUNT(*) FROM PhanCongCa 
                               WHERE MaNguoiDung = @MaNV AND NgayLamViec = @Ngay AND MaPhanCong <> @MaPC", conn))
@@ -925,9 +962,9 @@ namespace DermaSoft.Forms
                             chk.Parameters.AddWithValue("@Ngay", ngayLam);
                             chk.Parameters.AddWithValue("@MaPC", _maPhanCongDangChon);
                             int count = Convert.ToInt32(chk.ExecuteScalar());
-                            if (count > 0)
+                            if (count >= 3)
                             {
-                                lblError.Text = "NV này đã có ca trong ngày " + ngayLam.ToString("dd/MM/yyyy") + ".";
+                                lblError.Text = "NV này đã được phân tối đa 3 ca trong ngày " + ngayLam.ToString("dd/MM/yyyy") + ".";
                                 return;
                             }
                         }
@@ -959,34 +996,11 @@ namespace DermaSoft.Forms
         }
 
         // ══════════════════════════════════════════
-        // NÚT XÓA
+        // NÚT XÓA — ĐÃ VÔ HIỆU HÓA
         // ══════════════════════════════════════════
-
-        private void BtnXoa_Click(object sender, EventArgs e)
-        {
-            if (_maPhanCongDangChon == -1) return;
-
-            var result = MessageBox.Show(
-                "Xóa phân công PC" + _maPhanCongDangChon.ToString("D3") + "?",
-                "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (result != DialogResult.Yes) return;
-
-            try
-            {
-                using (var conn = DatabaseConnection.GetConnection())
-                using (var cmd = new SqlCommand("DELETE FROM PhanCongCa WHERE MaPhanCong = @Ma", conn))
-                {
-                    cmd.Parameters.AddWithValue("@Ma", _maPhanCongDangChon);
-                    cmd.ExecuteNonQuery();
-                }
-                ResetForm();
-                LoadDanhSach();
-            }
-            catch (SqlException ex)
-            {
-                MessageBox.Show(ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
+        // Theo quy định nghiệp vụ: sau khi Admin phân công ca, không được
+        // phép xóa lịch đã phân ca — chỉ được phép cập nhật. Hành vi xóa
+        // (DELETE FROM PhanCongCa) đã bị loại bỏ và nút Xóa được ẩn ở UI.
 
         // ══════════════════════════════════════════
         // HELPERS
